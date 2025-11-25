@@ -1,0 +1,25 @@
+/* Chatroom Connector UI Styles */
+
+/* Connector badge with better contrast */
+.chat-connector-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--body-color);
+    background: rgba(var(--primary-rgb, 13, 110, 253), 0.1);
+    border: 1px solid rgba(var(--primary-rgb, 13, 110, 253), 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+
+    i {
+        font-size: 9px;
+        color: var(--primary, #0d6efd);
+    }
+}
+
+// Dark mode support
+.o_dark .chat-connector-badge {
+    background: rgba(var(--primary-rgb, 13, 110, 253), 0.15);
+    border-color: rgba(var(--primary-rgb, 13, 110, 253), 0.3);
+}

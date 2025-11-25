@@ -1,0 +1,100 @@
+<odoo>
+    <record id="view_chatroom_message_list" model="ir.ui.view">
+        <field name="name">chatroom.message.list</field>
+        <field name="model">chatroom.message</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="create_date" />
+                <field name="room_id" />
+                <field name="direction" />
+                <field name="author_name" />
+                <field name="body" />
+                <field name="message_type" />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_message_form" model="ir.ui.view">
+        <field name="name">chatroom.message.form</field>
+        <field name="model">chatroom.message</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="room_id" />
+                            <field name="direction" />
+                            <field name="message_type" />
+                        </group>
+                        <group>
+                            <field name="user_id" />
+                            <field name="author_name" />
+                            <field name="create_date" />
+                        </group>
+                    </group>
+                    <group>
+                        <field name="body" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_message_search" model="ir.ui.view">
+        <field name="name">chatroom.message.search</field>
+        <field name="model">chatroom.message</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="body" />
+                <field name="room_id" />
+                <field name="author_name" />
+                <separator />
+                <filter
+                    string="Incoming"
+                    name="incoming"
+                    domain="[('direction', '=', 'incoming')]"
+                />
+                <filter
+                    string="Outgoing"
+                    name="outgoing"
+                    domain="[('direction', '=', 'outgoing')]"
+                />
+                <separator />
+                <filter
+                    string="Text"
+                    name="text"
+                    domain="[('message_type', '=', 'text')]"
+                />
+                <filter
+                    string="Product"
+                    name="product"
+                    domain="[('message_type', '=', 'product')]"
+                />
+                <separator />
+                <group>
+                    <filter
+                        string="Room"
+                        name="group_room"
+                        context="{'group_by': 'room_id'}"
+                    />
+                    <filter
+                        string="Direction"
+                        name="group_direction"
+                        context="{'group_by': 'direction'}"
+                    />
+                    <filter
+                        string="Type"
+                        name="group_type"
+                        context="{'group_by': 'message_type'}"
+                    />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_message" model="ir.actions.act_window">
+        <field name="name">Messages</field>
+        <field name="res_model">chatroom.message</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

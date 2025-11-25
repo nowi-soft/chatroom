@@ -1,0 +1,20 @@
+<odoo>
+    <record id="view_partner_form_chatroom" model="ir.ui.view">
+        <field name="name">res.partner.form.chatroom</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button
+                    name="action_view_chatrooms"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-comments"
+                    invisible="chatroom_count == 0"
+                >
+                    <field name="chatroom_count" widget="statinfo" string="Chats" />
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

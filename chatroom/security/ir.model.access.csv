@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chatroom_room_user,chatroom.room.user,model_chatroom_room,group_chatroom_user,1,1,1,0
+access_chatroom_room_manager,chatroom.room.manager,model_chatroom_room,group_chatroom_manager,1,1,1,1
+access_chatroom_message_user,chatroom.message.user,model_chatroom_message,group_chatroom_user,1,1,1,0
+access_chatroom_message_manager,chatroom.message.manager,model_chatroom_message,group_chatroom_manager,1,1,1,1

@@ -1,0 +1,201 @@
+from odoo import api, fields, models
+
+
+class ChatroomRoom(models.Model):
+    _name = "chatroom.room"
+    _description = "Chat Room"
+    _inherit = ["bus.listener.mixin"]
+    _order = "last_message_date desc, id desc"
+
+    name = fields.Char(required=True, index=True)
+    active = fields.Boolean(default=True)
+
+    partner_ids = fields.Many2many(
+        "res.partner",
+        "chatroom_room_partner_rel",
+        "room_id",
+        "partner_id",
+        string="Contacts",
+    )
+
+    assigned_to_id = fields.Many2one("res.users", string="Assigned To", index=True)
+    state = fields.Selection(
+        [
+            ("unassigned", "Unassigned"),
+            ("assigned", "Assigned"),
+            ("closed", "Closed"),
+        ],
+        default="unassigned",
+        required=True,
+        index=True,
+    )
+
+    message_ids = fields.One2many("chatroom.message", "room_id", string="Messages")
+    message_count = fields.Integer(compute="_compute_message_count", store=True)
+    last_message_date = fields.Datetime(compute="_compute_last_message", store=True)
+    last_message_preview = fields.Char(compute="_compute_last_message", store=True)
+
+    @api.depends("message_ids")
+    def _compute_message_count(self):
+        for room in self:
+            room.message_count = len(room.message_ids)
+
+    @api.depends("message_ids.create_date", "message_ids.body")
+    def _compute_last_message(self):
+        for room in self:
+            last_msg = room.message_ids[:1]
+            room.last_message_date = last_msg.create_date if last_msg else False
+            room.last_message_preview = last_msg.body[:50] if last_msg else ""
+
+    def action_assign_to_me(self):
+        self.write(
+            {
+                "assigned_to_id": self.env.user.id,
+                "state": "assigned",
+            }
+        )
+        self._notify_room_updated()
+        return True
+
+    def action_unassign(self):
+        self.write(
+            {
+                "assigned_to_id": False,
+                "state": "unassigned",
+            }
+        )
+        self._notify_room_updated()
+        return True
+
+    def action_close(self):
+        for room in self:
+            note_body = self.env._("Chat closed")
+            if room.assigned_to_id:
+                note_body += self.env._(
+                    " (was assigned to: %s)", room.assigned_to_id.name
+                )
+
+            self.env["chatroom.message"].create(
+                {
+                    "room_id": room.id,
+                    "body": note_body,
+                    "user_id": self.env.user.id,
+                    "direction": "outgoing",
+                    "is_internal": True,
+                }
+            )
+
+            room.write(
+                {
+                    "state": "closed",
+                    "assigned_to_id": False,
+                }
+            )
+
+        self._notify_room_updated()
+        return True
+
+    def action_reopen(self):
+        self.state = "assigned" if self.assigned_to_id else "unassigned"
+        self._notify_room_updated()
+        return True
+
+    def notify_room_updated(self):
+        return self._notify_room_updated()
+
+    def _notify_room_updated(self):
+        for room in self:
+            payload = {
+                "id": room.id,
+                "name": room.name,
+                "assigned_to_id": [room.assigned_to_id.id, room.assigned_to_id.name]
+                if room.assigned_to_id
+                else False,
+                "state": room.state,
+                "message_count": room.message_count,
+                "last_message_date": room.last_message_date.isoformat()
+                if room.last_message_date
+                else False,
+                "last_message_preview": room.last_message_preview,
+            }
+
+            self.env.cr.execute(
+                """
+                SELECT DISTINCT uid
+                FROM res_groups_users_rel
+                WHERE gid IN %s
+            """,
+                (
+                    tuple(
+                        [
+                            self.env.ref("chatroom.group_chatroom_user").id,
+                            self.env.ref("chatroom.group_chatroom_manager").id,
+                        ]
+                    ),
+                ),
+            )
+            user_ids = [row[0] for row in self.env.cr.fetchall()]
+            users_to_notify = self.env["res.users"].browse(user_ids)
+
+            managers = users_to_notify.filtered(
+                lambda u: u.has_group("chatroom.group_chatroom_manager")
+            )
+
+            regular_users = users_to_notify - managers
+            if room.assigned_to_id:
+                assigned_id = room.assigned_to_id.id
+                regular_users = regular_users.filtered(
+                    lambda u, aid=assigned_id: u.id == aid
+                )
+
+            users_to_send = managers | regular_users
+
+            if room.state in ["assigned", "unassigned"]:
+                users_to_send = users_to_notify
+
+            for user in users_to_send:
+                if user.partner_id:
+                    user.partner_id._bus_send("chatroom/room_updated", payload)
+
+    def action_create_partner_from_chat(self):
+        self.ensure_one()
+
+        context = {
+            "default_name": self.name,
+        }
+
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "res.partner",
+            "view_mode": "form",
+            "views": [[False, "form"]],
+            "target": "current",
+            "context": context,
+        }
+
+    def get_related_records(self):
+        self.ensure_one()
+        result = []
+
+        for partner in self.partner_ids:
+            result.append(
+                {
+                    "model": "res.partner",
+                    "id": partner.id,
+                    "name": partner.name,
+                    "display_name": partner.display_name,
+                    "field_name": "partner_ids",
+                }
+            )
+
+        return result
+
+    def action_open_chatroom(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.client",
+            "tag": "chatroom.app",
+            "params": {
+                "room_id": self.id,
+            },
+        }

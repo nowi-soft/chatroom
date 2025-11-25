@@ -1,0 +1,57 @@
+<templates xml:space="preserve">
+
+
+    <t
+        t-name="chatroom.ChatroomApp"
+        t-inherit="chatroom.ChatroomApp"
+        t-inherit-mode="extension"
+    >
+        <xpath expr="//div[@class='message']" position="attributes">
+            <attribute name="t-att-class">{
+                'message-incoming': msg.direction === 'incoming' and !msg.is_internal,
+                'message-outgoing': msg.direction === 'outgoing' and !msg.is_internal and !msg.is_ai_generated,
+                'message-ai': msg.is_ai_generated,
+                'message-note': msg.is_internal
+            }</attribute>
+        </xpath>
+
+        <xpath
+            expr="//div[@class='messages-header']/div[@class='header-left']"
+            position="after"
+        >
+            <div class="header-center">
+                <div class="ai-controls" t-if="state.currentRoom">
+                    <div
+                        t-if="!state.currentRoom.ai_enabled"
+                        class="d-flex align-items-center gap-2"
+                    >
+                        <button
+                            class="btn btn-sm btn-success"
+                            t-on-click="() => this.toggleAI(state.currentRoom)"
+                        >
+                            <i class="fa fa-robot" /> Enable AI
+                        </button>
+                    </div>
+                    <div t-else="" class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success">
+                            <i class="fa fa-robot" /> AI Agent Active
+                        </span>
+                        <button
+                            class="btn btn-sm btn-danger"
+                            t-on-click="() => this.toggleAI(state.currentRoom)"
+                        >
+                            <i class="fa fa-pause" /> Disable AI
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[@class='chat-meta']" position="inside">
+            <div t-if="chat.ai_enabled" class="chat-ai-badge">
+                <i class="fa fa-robot" /> AI
+            </div>
+        </xpath>
+    </t>
+
+</templates>

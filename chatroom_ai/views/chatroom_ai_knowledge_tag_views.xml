@@ -1,0 +1,33 @@
+<odoo>
+    <record id="view_chatroom_ai_knowledge_tag_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.tag.form</field>
+        <field name="model">chatroom.ai.knowledge.tag</field>
+        <field name="arch" type="xml">
+            <form string="Knowledge Tag">
+                <sheet>
+                    <group>
+                        <field name="name" />
+                        <field name="color" widget="color_picker" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_knowledge_tag_tree" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.tag.tree</field>
+        <field name="model">chatroom.ai.knowledge.tag</field>
+        <field name="arch" type="xml">
+            <list string="Knowledge Tags">
+                <field name="name" />
+                <field name="color" widget="color_picker" />
+            </list>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_knowledge_tag" model="ir.actions.act_window">
+        <field name="name">Knowledge Tags</field>
+        <field name="res_model">chatroom.ai.knowledge.tag</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

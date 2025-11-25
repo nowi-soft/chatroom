@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_chatroom_ai_agent_user,chatroom.ai.agent.user,model_chatroom_ai_agent,group_chatroom_ai_user,1,0,0,0
+access_chatroom_ai_agent_manager,chatroom.ai.agent.manager,model_chatroom_ai_agent,group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_provider_manager,chatroom.ai.provider.manager,model_chatroom_ai_provider,group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_knowledge_user,chatroom.ai.knowledge.user,model_chatroom_ai_knowledge,group_chatroom_ai_user,1,0,0,0
+access_chatroom_ai_knowledge_manager,chatroom.ai.knowledge.manager,model_chatroom_ai_knowledge,group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_tool_user,chatroom.ai.tool.user,model_chatroom_ai_tool,group_chatroom_ai_user,1,0,0,0
+access_chatroom_ai_tool_manager,chatroom.ai.tool.manager,model_chatroom_ai_tool,group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_knowledge_tag_user,chatroom.ai.knowledge.tag.user,model_chatroom_ai_knowledge_tag,group_chatroom_ai_user,1,0,0,0
+access_chatroom_ai_knowledge_tag_manager,chatroom.ai.knowledge.tag.manager,model_chatroom_ai_knowledge_tag,group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_conversation_user,chatroom.ai.conversation.user,model_chatroom_ai_conversation,group_chatroom_ai_user,1,1,0,0
+access_chatroom_ai_conversation_manager,chatroom.ai.conversation.manager,model_chatroom_ai_conversation,group_chatroom_ai_manager,1,1,1,1
+access_chatroom_ai_tool_test_wizard,chatroom.ai.tool.test.wizard,model_chatroom_ai_tool_test_wizard,group_chatroom_ai_manager,1,1,1,1

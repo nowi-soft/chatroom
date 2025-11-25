@@ -1,0 +1,99 @@
+<odoo noupdate="1">
+    <record id="ai_tool_create_lead" model="chatroom.ai.tool">
+        <field name="name">Create Lead</field>
+        <field name="code_name">create_lead</field>
+        <field
+            name="description"
+        >Create a new lead/opportunity in the CRM system when a potential customer shows interest. Use this when the conversation indicates sales potential.</field>
+        <field name="parameters_schema">{
+    "name": "create_lead",
+    "description": "Create a new lead/opportunity in CRM",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Lead title or opportunity name"
+            },
+            "contact_name": {
+                "type": "string",
+                "description": "Contact person name"
+            },
+            "email": {
+                "type": "string",
+                "description": "Email address"
+            },
+            "phone": {
+                "type": "string",
+                "description": "Phone number"
+            },
+            "description": {
+                "type": "string",
+                "description": "Additional notes or requirements"
+            }
+        },
+        "required": ["name"]
+    }
+}</field>
+        <field name="python_code">result = {
+    'success': True,
+    'lead_id': False,
+    'message': ''
+}
+
+try:
+    # Get parameters
+    name = params.get('name')
+    contact_name = params.get('contact_name')
+    email = params.get('email')
+    phone = params.get('phone')
+    description = params.get('description', '')
+
+    # Create lead
+    lead_vals = {
+        'name': name,
+        'contact_name': contact_name,
+        'email_from': email,
+        'phone': phone,
+        'description': description,
+        'type': 'opportunity',
+    }
+
+    # Link to chat room if available
+    if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
+        lead_vals['chatroom_room_ids'] = [(4, room_id)]
+
+    # Link to partner if chat has linked contacts
+    room = env['chatroom.room'].browse(room_id)
+    if room and room.partner_ids:
+        lead_vals['partner_id'] = room.partner_ids[0].id
+
+    lead = env['crm.lead'].create(lead_vals)
+
+    # Add message with creation info
+    if room_id and agent_id:
+        agent = env['chatroom.ai.agent'].browse(agent_id)
+        base_url = env['ir.config_parameter'].sudo().get_param('web.base.url')
+        chat_url = f"{base_url}/web#action=chatroom.action_chatroom_app&amp;room_id={room_id}"
+
+        message_body = f'''
+        &lt;p&gt;This lead was automatically created by AI agent &lt;strong&gt;{agent.name}&lt;/strong&gt; from a chat conversation.&lt;/p&gt;
+        &lt;p&gt;&lt;a href="{chat_url}" target="_blank"&gt;View source chat conversation&lt;/a&gt;&lt;/p&gt;
+        '''
+
+        lead.message_post(
+            body=message_body,
+            subject='Lead created by AI',
+            message_type='notification',
+            subtype_xmlid='mail.mt_note',
+        )
+
+    result['lead_id'] = lead.id
+    result['message'] = f'Lead "{name}" created successfully (ID: {lead.id})'
+
+except Exception as e:
+    result['success'] = False
+    result['message'] = f'Error creating lead: {str(e)}'</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

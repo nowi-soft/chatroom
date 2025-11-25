@@ -1,0 +1,24 @@
+<odoo>
+    <record id="crm_lead_view_form_inherit_chatroom" model="ir.ui.view">
+        <field name="name">crm.lead.form.inherit.chatroom</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button
+                    name="action_view_chatroom_rooms"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-comments"
+                    invisible="chatroom_room_count == 0"
+                >
+                    <field
+                        name="chatroom_room_count"
+                        widget="statinfo"
+                        string="Chats"
+                    />
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

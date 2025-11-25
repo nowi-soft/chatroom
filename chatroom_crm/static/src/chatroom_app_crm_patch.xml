@@ -1,0 +1,23 @@
+<templates xml:space="preserve">
+    <t
+        t-name="chatroom_ai_crm.chatroom_app_crm_patch"
+        t-inherit="chatroom.ChatroomApp"
+        t-inherit-mode="extension"
+    >
+        <xpath
+            expr="//span[@class='related-badge']/i[@t-if=&quot;rel.model === 'res.partner'&quot;]"
+            position="after"
+        >
+            <i t-elif="rel.model === 'crm.lead'" class="fa fa-trophy" />
+        </xpath>
+
+        <xpath
+            expr="//t[@t-if='state.rightPanelTab === tab.id']/RecordList"
+            position="attributes"
+        >
+            <attribute
+                name="onCreateRecord.bind"
+            >tab.id === 'leads' ? createLeadFromChat : (tab.id === 'contacts' ? createPartnerFromChat : null)</attribute>
+        </xpath>
+    </t>
+</templates>

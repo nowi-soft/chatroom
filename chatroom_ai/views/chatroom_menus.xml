@@ -1,0 +1,49 @@
+<odoo>
+    <menuitem
+        id="menu_chatroom_ai"
+        name="AI Agents"
+        parent="chatroom.menu_chatroom_config"
+        sequence="50"
+        groups="chatroom_ai.group_chatroom_ai_manager"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_agents"
+        name="Agents"
+        parent="menu_chatroom_ai"
+        action="action_chatroom_ai_agent"
+        sequence="10"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_providers"
+        name="AI Providers"
+        parent="menu_chatroom_ai"
+        action="action_chatroom_ai_provider"
+        sequence="20"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_knowledge"
+        name="Knowledge Base"
+        parent="menu_chatroom_ai"
+        action="action_chatroom_ai_knowledge"
+        sequence="30"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_knowledge_tags"
+        name="Knowledge Tags"
+        parent="menu_chatroom_ai"
+        action="action_chatroom_ai_knowledge_tag"
+        sequence="35"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_tools"
+        name="Tools &amp; Actions"
+        parent="menu_chatroom_ai"
+        action="action_chatroom_ai_tool"
+        sequence="40"
+    />
+</odoo>

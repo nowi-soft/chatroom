@@ -1,0 +1,67 @@
+<odoo>
+    <menuitem
+        id="menu_chatroom_root"
+        name="ChatRoom"
+        sequence="50"
+        web_icon="chatroom,static/description/icon.png"
+        groups="group_chatroom_user"
+    />
+
+    <record id="action_chatroom_app" model="ir.actions.client">
+        <field name="name">ChatRoom</field>
+        <field name="tag">chatroom.app</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_chatroom_app"
+        name="ChatRoom"
+        parent="menu_chatroom_root"
+        action="action_chatroom_app"
+        sequence="5"
+        groups="group_chatroom_user"
+    />
+
+    <menuitem
+        id="menu_chatroom_rooms"
+        name="Chats"
+        parent="menu_chatroom_root"
+        action="action_chatroom_room"
+        sequence="10"
+        groups="group_chatroom_manager"
+    />
+
+    <menuitem
+        id="menu_chatroom_messages"
+        name="Messages"
+        parent="menu_chatroom_root"
+        action="action_chatroom_message"
+        sequence="20"
+        groups="group_chatroom_manager"
+    />
+
+    <menuitem
+        id="menu_chatroom_config"
+        name="Configuration"
+        parent="menu_chatroom_root"
+        sequence="100"
+        groups="group_chatroom_manager"
+    />
+
+    <record id="action_chatroom_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'module': 'chatroom'}</field>
+    </record>
+
+    <menuitem
+        id="menu_chatroom_settings"
+        name="Settings"
+        parent="menu_chatroom_config"
+        action="action_chatroom_settings"
+        sequence="1"
+        groups="group_chatroom_manager"
+    />
+</odoo>

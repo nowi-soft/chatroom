@@ -1,0 +1,130 @@
+<templates xml:space="preserve">
+
+    <t t-name="chatroom.RecordList">
+        <div class="o_record_list">
+            <div class="record-list-search">
+                <div class="input-group">
+                    <input
+                        type="text"
+                        class="form-control"
+                        t-model="state.searchTerm"
+                        t-on-keyup="onSearchKeyup"
+                        t-att-placeholder="'Search ' + props.tab.name + '...'"
+                    />
+                    <button class="btn btn-primary" t-on-click="onSearch">
+                        <i class="fa fa-search" />
+                    </button>
+                </div>
+            </div>
+
+            <t t-if="props.onCreateRecord or props.onLinkExisting">
+                <div class="dropdown" t-att-class="{ show: state.showMenu }">
+                    <button
+                        class="btn btn-sm btn-link w-100 text-start"
+                        t-on-click="toggleMenu"
+                        t-att-title="props.tab.name + ' Actions'"
+                    >
+                        <i t-att-class="'fa ' + props.tab.icon" />
+                    </button>
+                    <div
+                        class="dropdown-menu w-100"
+                        t-att-class="{ show: state.showMenu }"
+                    >
+                        <a
+                            t-if="props.onCreateRecord"
+                            class="dropdown-item"
+                            t-on-click="onCreateRecord"
+                        >
+                            <i class="fa fa-plus-circle" /> Create New <t
+                            t-esc="props.tab.singular || props.tab.name"
+                        />
+                        </a>
+                        <a
+                            t-if="props.onLinkExisting"
+                            class="dropdown-item"
+                            t-on-click="onLinkExisting"
+                        >
+                            <i class="fa fa-link" /> Link Existing <t
+                            t-esc="props.tab.singular || props.tab.name"
+                        />
+                        </a>
+                    </div>
+                </div>
+            </t>
+
+            <t t-if="state.loading">
+                <div class="text-center p-4">
+                    <i class="fa fa-spinner fa-spin fa-2x text-muted" />
+                </div>
+            </t>
+
+            <t t-else="">
+                <div class="record-list-items">
+                    <t t-foreach="state.records" t-as="record" t-key="record.id">
+                        <div
+                            class="record-item"
+                            t-att-class="{
+                                 'link-mode': props.linkMode,
+                                 linked: props.linkedRecordIds and props.linkedRecordIds.includes(record.id)
+                             }"
+                            draggable="true"
+                            t-on-dragstart="(ev) => this.onDragStart(record, ev)"
+                            t-on-click="(ev) => this.onRecordClick(record, ev)"
+                        >
+                            <div class="record-avatar">
+                                <t t-if="getRecordImage(record)">
+                                    <img
+                                        t-att-src="getRecordImage(record)"
+                                        alt="Avatar"
+                                    />
+                                </t>
+                                <t t-else="">
+                                    <i
+                                        t-att-class="'fa ' + props.tab.icon + ' fa-2x'"
+                                    />
+                                </t>
+                            </div>
+                            <div class="record-info">
+                                <div class="record-name">
+                                    <t t-esc="getRecordTitle(record)" />
+                                    <i
+                                        t-if="props.linkedRecordIds and props.linkedRecordIds.includes(record.id)"
+                                        class="fa fa-check-circle text-success ms-2"
+                                        title="Linked to this chat"
+                                    />
+                                </div>
+                                <div
+                                    class="record-subtitle"
+                                    t-esc="getRecordSubtitle(record)"
+                                />
+                            </div>
+                            <div class="record-action">
+                                <button
+                                    class="btn btn-sm btn-link p-0 me-2"
+                                    t-on-click.stop="(ev) => this.onExpandClick(record, ev)"
+                                    title="Open in full screen"
+                                >
+                                    <i class="fa fa-external-link-alt" />
+                                </button>
+                                <button
+                                    class="btn btn-sm btn-link p-0 text-muted"
+                                    t-on-click.stop="(ev) => this.onExpandClick(record, ev)"
+                                    title="Open in full screen"
+                                >
+                                    <i class="fa fa-chevron-right" />
+                                </button>
+                            </div>
+                        </div>
+                    </t>
+
+                    <t t-if="!state.records.length">
+                        <div class="text-center text-muted p-4">
+                            No records found
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

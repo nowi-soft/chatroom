@@ -1,0 +1,15 @@
+<templates xml:space="preserve">
+    <t
+        t-name="chatroom.ChatroomApp"
+        t-inherit="chatroom.ChatroomApp"
+        t-inherit-mode="extension"
+    >
+        <xpath expr="//div[@class='header-left']/h2" position="after">
+            <span
+                class="channel-badge"
+                t-if="state.currentRoom.connector_id"
+                t-esc="state.currentRoom.connector_id[1]"
+            />
+        </xpath>
+    </t>
+</templates>

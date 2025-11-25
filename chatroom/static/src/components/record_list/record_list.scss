@@ -1,0 +1,149 @@
+.o_record_list {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.record-list-search {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    background: var(--body-bg);
+}
+
+.o_record_list .dropdown {
+    position: relative;
+    margin-top: 8px;
+}
+
+.o_record_list .dropdown > button {
+    width: 100%;
+    text-align: left;
+    padding: 6px 12px;
+}
+
+.o_record_list .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+}
+
+.o_record_list .dropdown-menu.show {
+    display: block;
+}
+
+.o_record_list .dropdown-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
+    color: #333;
+    text-decoration: none;
+}
+
+.o_record_list .dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.o_record_list .dropdown-item i {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+}
+
+.record-list-items {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.record-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s;
+    gap: 12px;
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    &.link-mode {
+        border-left: 3px solid var(--primary);
+
+        &:hover {
+            background: rgba(var(--primary-rgb), 0.1);
+        }
+    }
+
+    &.linked {
+        background: rgba(var(--success-rgb), 0.05);
+        border-left: 3px solid var(--success);
+    }
+}
+
+.o_dark .record-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.record-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--o-view-background-color);
+    border: 1px solid var(--border-color);
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    i {
+        color: var(--text-muted);
+    }
+}
+
+.record-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.record-name {
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--body-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+}
+
+.record-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.record-action {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}

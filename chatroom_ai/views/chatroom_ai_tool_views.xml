@@ -1,0 +1,147 @@
+<odoo>
+    <record id="view_chatroom_ai_tool_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.tool.search</field>
+        <field name="model">chatroom.ai.tool</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="code_name" />
+                <field name="implementation_type" />
+                <separator />
+                <filter
+                    string="Active"
+                    name="active"
+                    domain="[('active', '=', True)]"
+                />
+                <filter
+                    string="Archived"
+                    name="inactive"
+                    domain="[('active', '=', False)]"
+                />
+            </search>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_tool_tree" model="ir.ui.view">
+        <field name="name">chatroom.ai.tool.tree</field>
+        <field name="model">chatroom.ai.tool</field>
+        <field name="arch" type="xml">
+            <list string="AI Tools">
+                <field name="sequence" widget="handle" />
+                <field name="name" />
+                <field name="code_name" />
+                <field name="implementation_type" />
+                <field name="execution_count" />
+                <field name="last_execution" />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_tool_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.tool.form</field>
+        <field name="model">chatroom.ai.tool</field>
+        <field name="arch" type="xml">
+            <form string="AI Tool">
+                <header>
+                    <button
+                        name="action_test_tool"
+                        type="object"
+                        string="Test Tool"
+                        class="oe_highlight"
+                    />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Tool Name" />
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field
+                                name="code_name"
+                                placeholder="e.g., create_lead, send_email"
+                            />
+                            <field name="implementation_type" widget="radio" />
+                        </group>
+                        <group>
+                            <field name="execution_count" />
+                            <field name="last_execution" />
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Description &amp; Parameters" name="definition">
+                            <group>
+                                <field
+                                    name="description"
+                                    widget="text"
+                                    placeholder="Describe what this tool does. Be clear and specific - the AI will use this to decide when to call the tool."
+                                />
+                            </group>
+                            <separator string="Parameters Schema (JSON)" />
+                            <field
+                                name="parameters_schema"
+                                widget="code"
+                                options="{'mode': 'javascript'}"
+                            />
+                        </page>
+
+                        <page string="Implementation" name="implementation">
+                            <group invisible="implementation_type != 'python'">
+                                <field
+                                    name="python_code"
+                                    widget="code"
+                                    options="{'mode': 'python'}"
+                                    nolabel="1"
+                                />
+                            </group>
+
+                            <group invisible="implementation_type != 'model_method'">
+                                <field name="model_id" />
+                                <field name="method_name" />
+                            </group>
+
+                            <group invisible="implementation_type != 'server_action'">
+                                <field name="server_action_id" />
+                            </group>
+                        </page>
+
+                        <page string="Example Usage" name="example">
+                            <field
+                                name="example_usage"
+                                widget="text"
+                                placeholder="Provide an example of when and how the AI should use this tool..."
+                            />
+                        </page>
+
+                        <page string="Used by Agents" name="agents">
+                            <field name="agent_ids">
+                                <list>
+                                    <field name="name" />
+                                    <field name="provider_id" />
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_tool" model="ir.actions.act_window">
+        <field name="name">AI Tools</field>
+        <field name="res_model">chatroom.ai.tool</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create AI tools and actions
+            </p>
+            <p>
+                Tools allow AI agents to perform actions like creating leads, sending emails,
+                updating records, etc. Define what the tool does and when it should be used.
+            </p>
+        </field>
+    </record>
+</odoo>

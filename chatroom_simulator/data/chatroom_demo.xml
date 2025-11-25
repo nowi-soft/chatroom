@@ -1,0 +1,63 @@
+<odoo noupdate="1">
+    <record id="chatroom_demo_1" model="chatroom.room">
+        <field name="name">Juan Pérez</field>
+        <field name="external_id">+5491123456789</field>
+        <field name="state">unassigned</field>
+    </record>
+
+    <record id="chatroom_demo_2" model="chatroom.room">
+        <field name="name">María González</field>
+        <field name="external_id">+5491198765432</field>
+        <field name="state">unassigned</field>
+    </record>
+
+    <record id="chatroom_demo_3" model="chatroom.room">
+        <field name="name">Carlos Rodríguez</field>
+        <field name="external_id">+5491156781234</field>
+        <field name="state">unassigned</field>
+    </record>
+
+    <record id="message_demo_1_1" model="chatroom.message">
+        <field name="room_id" ref="chatroom_demo_1" />
+        <field name="body">Hello, I want to ask about prices</field>
+        <field name="direction">incoming</field>
+        <field name="message_type">text</field>
+    </record>
+
+    <record id="message_demo_1_2" model="chatroom.message">
+        <field name="room_id" ref="chatroom_demo_1" />
+        <field name="body">Sure, what product are you interested in?</field>
+        <field name="direction">outgoing</field>
+        <field name="message_type">text</field>
+        <field name="user_id" ref="base.user_admin" />
+    </record>
+
+    <record id="message_demo_1_3" model="chatroom.message">
+        <field name="room_id" ref="chatroom_demo_1" />
+        <field name="body">The office desk</field>
+        <field name="direction">incoming</field>
+        <field name="message_type">text</field>
+    </record>
+
+    <record id="message_demo_2_1" model="chatroom.message">
+        <field name="room_id" ref="chatroom_demo_2" />
+        <field name="body">Do you have stock available?</field>
+        <field name="direction">incoming</field>
+        <field name="message_type">text</field>
+    </record>
+
+    <record id="message_demo_2_2" model="chatroom.message">
+        <field name="room_id" ref="chatroom_demo_2" />
+        <field name="body">Yes, we have stock. Which product?</field>
+        <field name="direction">outgoing</field>
+        <field name="message_type">text</field>
+        <field name="user_id" ref="base.user_admin" />
+    </record>
+
+    <record id="message_demo_3_1" model="chatroom.message">
+        <field name="room_id" ref="chatroom_demo_3" />
+        <field name="body">How long does shipping take?</field>
+        <field name="direction">incoming</field>
+        <field name="message_type">text</field>
+    </record>
+</odoo>

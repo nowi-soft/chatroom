@@ -1,0 +1,39 @@
+<odoo>
+    <record id="chatroom_create_lead_wizard_form" model="ir.ui.view">
+        <field name="name">chatroom.create.lead.wizard.form</field>
+        <field name="model">chatroom.create.lead.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Lead from Chat">
+                <group>
+                    <group>
+                        <field name="room_id" invisible="1" />
+                        <field name="name" />
+                        <field name="partner_id" />
+                        <field name="contact_name" />
+                    </group>
+                    <group>
+                        <field name="email" />
+                        <field name="phone" />
+                        <field name="expected_revenue" />
+                        <field name="priority" />
+                    </group>
+                </group>
+                <group>
+                    <field
+                        name="description"
+                        placeholder="Additional notes about this opportunity..."
+                    />
+                </group>
+                <footer>
+                    <button
+                        string="Create Lead"
+                        type="object"
+                        name="action_create_lead"
+                        class="btn-primary"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

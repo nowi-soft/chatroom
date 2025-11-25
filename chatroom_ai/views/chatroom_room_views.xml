@@ -1,0 +1,50 @@
+<odoo>
+    <record id="view_chatroom_room_form_ai" model="ir.ui.view">
+        <field name="name">chatroom.room.form.ai</field>
+        <field name="model">chatroom.room</field>
+        <field name="inherit_id" ref="chatroom.view_chatroom_room_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button
+                    name="action_enable_ai"
+                    type="object"
+                    string="Enable AI"
+                    class="btn-success"
+                    invisible="ai_enabled"
+                />
+                <button
+                    name="action_disable_ai"
+                    type="object"
+                    string="Disable AI"
+                    class="btn-warning"
+                    invisible="not ai_enabled"
+                />
+                <button
+                    name="action_view_ai_conversations"
+                    type="object"
+                    string="AI Conversations"
+                    class="btn-secondary"
+                    invisible="not ai_conversation_ids"
+                />
+            </xpath>
+
+            <xpath expr="//field[@name='assigned_to_id']" position="after">
+                <field name="ai_enabled" widget="boolean_toggle" />
+                <field name="ai_agent_id" invisible="not ai_enabled" />
+                <field name="ai_conversation_state" invisible="not ai_enabled" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chatroom_room_list_ai" model="ir.ui.view">
+        <field name="name">chatroom.room.list.ai</field>
+        <field name="model">chatroom.room</field>
+        <field name="inherit_id" ref="chatroom.view_chatroom_room_list" />
+        <field name="arch" type="xml">
+            <field name="state" position="after">
+                <field name="ai_enabled" widget="boolean_toggle" optional="show" />
+                <field name="ai_agent_id" optional="hide" />
+            </field>
+        </field>
+    </record>
+</odoo>

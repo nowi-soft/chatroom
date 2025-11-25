@@ -1,0 +1,89 @@
+<odoo>
+    <record id="view_chatroom_connector_form_evolution" model="ir.ui.view">
+        <field name="name">chatroom.connector.form.evolution</field>
+        <field name="model">chatroom.connector</field>
+        <field
+            name="inherit_id"
+            ref="chatroom_connector.view_chatroom_connector_form"
+        />
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page
+                    string="Evolution API Configuration"
+                    name="evolution_config"
+                    invisible="connector_type != 'evolution'"
+                >
+                    <group>
+                        <group>
+                            <field
+                                name="base_url"
+                                placeholder="https://your-evolution-api.com"
+                                required="connector_type == 'evolution'"
+                            />
+                            <field
+                                name="api_key"
+                                password="True"
+                                placeholder="Your Evolution Global API Key"
+                                required="connector_type == 'evolution'"
+                            />
+                            <field
+                                name="app_name"
+                                placeholder="WhatsApp Instance Name"
+                                required="connector_type == 'evolution'"
+                            />
+                        </group>
+                        <group>
+                            <field
+                                name="error_message"
+                                readonly="1"
+                                invisible="not error_message"
+                                widget="text"
+                            />
+                        </group>
+                    </group>
+
+                    <div class="alert alert-info mt-3" role="alert">
+                        <h4>Setup Instructions:</h4>
+                        <ol>
+                            <li>Deploy your Evolution API server</li>
+                            <li>Create a WhatsApp instance via Evolution API</li>
+                            <li>Get your Global API Key from Evolution settings</li>
+                            <li>Enter Base URL, API Key and Instance Name above</li>
+                            <li>Copy the webhook URL from the main tab</li>
+                            <li>Configure webhook in Evolution API:
+                                <pre>POST {base_url}/webhook/set/{instance}
+Content-Type: application/json
+apikey: {your_api_key}
+
+{
+  "url": "your_webhook_url_from_main_tab",
+  "webhook_by_events": false,
+  "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE"]
+}</pre>
+                            </li>
+                            <li>Click "Test Connection" to verify</li>
+                        </ol>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chatroom_connector_search_evolution" model="ir.ui.view">
+        <field name="name">chatroom.connector.search.evolution</field>
+        <field name="model">chatroom.connector</field>
+        <field
+            name="inherit_id"
+            ref="chatroom_connector.view_chatroom_connector_search"
+        />
+        <field name="arch" type="xml">
+            <xpath expr="//separator[@name='connector_types']" position="after">
+                <filter
+                    string="Evolution API"
+                    name="evolution"
+                    domain="[('connector_type', '=', 'evolution')]"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

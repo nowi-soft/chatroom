@@ -1,0 +1,206 @@
+<odoo>
+    <record id="view_chatroom_ai_knowledge_search" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.search</field>
+        <field name="model">chatroom.ai.knowledge</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="content_type" />
+                <field name="tag_ids" />
+                <separator />
+                <filter
+                    string="Active"
+                    name="active"
+                    domain="[('active', '=', True)]"
+                />
+                <filter
+                    string="Archived"
+                    name="inactive"
+                    domain="[('active', '=', False)]"
+                />
+                <group>
+                    <filter
+                        string="Content Type"
+                        name="group_content_type"
+                        context="{'group_by': 'content_type'}"
+                    />
+                    <filter
+                        string="Processing Status"
+                        name="group_processing_status"
+                        context="{'group_by': 'processing_status'}"
+                    />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_knowledge_tree" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.tree</field>
+        <field name="model">chatroom.ai.knowledge</field>
+        <field name="arch" type="xml">
+            <list string="Knowledge Base">
+                <field name="sequence" widget="handle" />
+                <field name="name" />
+                <field name="content_type" />
+                <field
+                    name="tag_ids"
+                    widget="many2many_tags"
+                    options="{'color_field': 'color'}"
+                />
+                <field
+                    name="processing_status"
+                    widget="badge"
+                    decoration-success="processing_status == 'success'"
+                    decoration-danger="processing_status == 'error'"
+                    decoration-warning="processing_status == 'not_processed'"
+                />
+                <field name="char_count" />
+                <field name="last_updated" />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_knowledge_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.knowledge.form</field>
+        <field name="model">chatroom.ai.knowledge</field>
+        <field name="arch" type="xml">
+            <form string="Knowledge Document">
+                <header>
+                    <button
+                        name="action_process_content"
+                        type="object"
+                        string="Process Content"
+                        class="oe_highlight"
+                    />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Document Name" />
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="content_type" widget="radio" />
+                        </group>
+                        <group>
+                            <field
+                                name="processing_status"
+                                widget="badge"
+                                decoration-success="processing_status == 'success'"
+                                decoration-danger="processing_status == 'error'"
+                                decoration-warning="processing_status == 'not_processed'"
+                            />
+                            <field name="char_count" />
+                            <field name="last_updated" />
+                            <field
+                                name="tag_ids"
+                                widget="many2many_tags"
+                                options="{'color_field': 'color', 'no_create_edit': False}"
+                                placeholder="Add tags..."
+                            />
+                        </group>
+                    </group>
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                        invisible="processing_status != 'not_processed'"
+                    >
+                        <i
+                        class="fa fa-exclamation-triangle"
+                        title="Warning"
+                        aria-label="Warning"
+                    /> This document has not been processed yet. Click "Process Content" to extract and prepare the content.
+                    </div>
+                    <div
+                        class="alert alert-danger"
+                        role="alert"
+                        invisible="processing_status != 'error'"
+                    >
+                        <i
+                            class="fa fa-times-circle"
+                            title="Error"
+                            aria-label="Error"
+                        />
+                        <strong>Processing Error:</strong>
+                        <field name="processing_message" readonly="1" nolabel="1" />
+                    </div>
+                    <div
+                        class="alert alert-success"
+                        role="alert"
+                        invisible="processing_status != 'success'"
+                    >
+                        <i
+                            class="fa fa-check-circle"
+                            title="Success"
+                            aria-label="Success"
+                        />
+                        <field name="processing_message" readonly="1" nolabel="1" />
+                    </div>
+
+                    <notebook>
+                        <page
+                            string="Content"
+                            name="content"
+                            invisible="content_type not in ['text', 'html']"
+                        >
+                            <field
+                                name="content"
+                                widget="text"
+                                invisible="content_type not in ['text', 'html']"
+                            />
+                        </page>
+
+                        <page
+                            string="File Upload"
+                            name="file"
+                            invisible="content_type != 'file'"
+                        >
+                            <group>
+                                <field name="file" filename="file_name" />
+                                <field name="file_name" invisible="1" />
+                            </group>
+                        </page>
+
+                        <page string="Processed Content" name="processed">
+                            <field name="processed_content" widget="text" />
+                        </page>
+
+                        <page string="Description" name="description">
+                            <field
+                                name="description"
+                                widget="text"
+                                placeholder="Describe what information this document contains..."
+                            />
+                        </page>
+
+                        <page string="Used by Agents" name="agents">
+                            <field name="agent_ids">
+                                <list>
+                                    <field name="name" />
+                                    <field name="provider_id" />
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_chatroom_ai_knowledge" model="ir.actions.act_window">
+        <field name="name">Knowledge Base</field>
+        <field name="res_model">chatroom.ai.knowledge</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add documents to your AI knowledge base
+            </p>
+            <p>
+                Upload documents or add text content.
+                AI agents will use this information to answer questions accurately.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,35 @@
+{
+    "name": "ChatRoom",
+    "version": "19.0.1.0.0",
+    "category": "",
+    "summary": "",
+    "author": "Nowi",
+    "website": "https://nowi.com.ar",
+    "license": "LGPL-3",
+    "depends": [
+        "base",
+        "web",
+        "bus",
+        "mail",
+        "contacts",
+    ],
+    "data": [
+        "security/chatroom_security.xml",
+        "security/ir.model.access.csv",
+        "views/chatroom_room_views.xml",
+        "views/chatroom_message_views.xml",
+        "views/chatroom_menus.xml",
+        "views/res_partner_views.xml",
+        "views/res_config_settings_views.xml",
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "chatroom/static/src/components/**/*.js",
+            "chatroom/static/src/components/**/*.xml",
+            "chatroom/static/src/components/**/*.scss",
+        ],
+    },
+    "installable": True,
+    "application": True,
+    "auto_install": False,
+}

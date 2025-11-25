@@ -1,0 +1,40 @@
+{
+    "name": "ChatRoom AI Agents",
+    "version": "19.0.1.0.0",
+    "category": "",
+    "summary": "",
+    "author": "Nowi",
+    "website": "https://nowi.com.ar",
+    "license": "LGPL-3",
+    "depends": [
+        "chatroom",
+        "web",
+    ],
+    "data": [
+        "security/chatroom_ai_security.xml",
+        "security/ir.model.access.csv",
+        "data/ir_cron_data.xml",
+        "views/chatroom_ai_provider_views.xml",
+        "views/chatroom_ai_agent_views.xml",
+        "views/chatroom_ai_knowledge_views.xml",
+        "views/chatroom_ai_knowledge_tag_views.xml",
+        "views/chatroom_ai_tool_views.xml",
+        "views/chatroom_room_views.xml",
+        "views/chatroom_menus.xml",
+        "wizard/chatroom_ai_tool_test_wizard_views.xml",
+    ],
+    "demo": [],
+    "oca_data_manual": [
+        "data/demo_data.xml",
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "chatroom_ai/static/src/**/*.js",
+            "chatroom_ai/static/src/**/*.xml",
+            "chatroom_ai/static/src/**/*.scss",
+        ],
+    },
+    "installable": True,
+    "application": False,
+    "auto_install": False,
+}

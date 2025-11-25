@@ -1,0 +1,205 @@
+<odoo>
+    <record id="view_chatroom_connector_form" model="ir.ui.view">
+        <field name="name">chatroom.connector.form</field>
+        <field name="model">chatroom.connector</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button
+                        name="action_test_connection"
+                        string="Test Connection"
+                        type="object"
+                        class="btn-primary"
+                    />
+                    <field name="state" widget="statusbar" />
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button
+                            name="%(chatroom.action_chatroom_room)d"
+                            type="action"
+                            class="oe_stat_button"
+                            icon="fa-comments"
+                            context="{'search_default_connector_id': id}"
+                        >
+                            <field
+                                name="messages_received"
+                                widget="statinfo"
+                                string="Received"
+                            />
+                        </button>
+                        <button
+                            class="oe_stat_button"
+                            icon="fa-paper-plane"
+                            type="object"
+                        >
+                            <field
+                                name="messages_sent"
+                                widget="statinfo"
+                                string="Sent"
+                            />
+                        </button>
+                    </div>
+                    <widget
+                        name="web_ribbon"
+                        title="Inactive"
+                        bg_color="text-bg-danger"
+                        invisible="active"
+                    />
+                    <div class="oe_title">
+                        <label for="name" />
+                        <h1>
+                            <field name="name" placeholder="e.g. My Connector" />
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="connector_type" />
+                            <field name="last_sync" readonly="1" />
+                        </group>
+                        <group>
+                            <field
+                                name="webhook_url"
+                                readonly="1"
+                                widget="CopyClipboardChar"
+                            />
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Status" name="status">
+                            <group>
+                                <group>
+                                    <field name="messages_sent" readonly="1" />
+                                    <field name="messages_received" readonly="1" />
+                                </group>
+                                <group>
+                                    <field
+                                        name="error_message"
+                                        readonly="1"
+                                        invisible="not error_message"
+                                    />
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_connector_tree" model="ir.ui.view">
+        <field name="name">chatroom.connector.tree</field>
+        <field name="model">chatroom.connector</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="connector_type" />
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-success="state == 'active'"
+                    decoration-danger="state == 'error'"
+                />
+                <field name="messages_received" />
+                <field name="messages_sent" />
+                <field name="last_sync" />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_connector_search" model="ir.ui.view">
+        <field name="name">chatroom.connector.search</field>
+        <field name="model">chatroom.connector</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="connector_type" />
+                <filter
+                    string="Active"
+                    name="active"
+                    domain="[('active', '=', True)]"
+                />
+                <filter
+                    string="Archived"
+                    name="inactive"
+                    domain="[('active', '=', False)]"
+                />
+                <separator name="connector_types" />
+                <filter
+                    string="Error"
+                    name="error"
+                    domain="[('state', '=', 'error')]"
+                />
+                <group>
+                    <filter
+                        string="Type"
+                        name="group_type"
+                        context="{'group_by': 'connector_type'}"
+                    />
+                    <filter
+                        string="Status"
+                        name="group_state"
+                        context="{'group_by': 'state'}"
+                    />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_connector" model="ir.actions.act_window">
+        <field name="name">Connectors</field>
+        <field name="res_model">chatroom.connector</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <menuitem
+        id="menu_chatroom_connector"
+        name="Connectors"
+        parent="chatroom.menu_chatroom_config"
+        action="action_chatroom_connector"
+        sequence="10"
+    />
+
+    <record id="view_chatroom_room_list_connector" model="ir.ui.view">
+        <field name="name">chatroom.room.list.connector</field>
+        <field name="model">chatroom.room</field>
+        <field name="inherit_id" ref="chatroom.view_chatroom_room_list" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="connector_id" optional="show" widget="badge" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chatroom_room_form_connector" model="ir.ui.view">
+        <field name="name">chatroom.room.form.connector</field>
+        <field name="model">chatroom.room</field>
+        <field name="inherit_id" ref="chatroom.view_chatroom_room_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="connector_id" />
+                <field name="external_id" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chatroom_room_search_connector" model="ir.ui.view">
+        <field name="name">chatroom.room.search.connector</field>
+        <field name="model">chatroom.room</field>
+        <field name="inherit_id" ref="chatroom.view_chatroom_room_search" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="connector_id" />
+            </xpath>
+            <xpath expr="//filter[@name='group_state']" position="after">
+                <filter
+                    string="Connector"
+                    name="group_connector"
+                    context="{'group_by': 'connector_id'}"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,77 @@
+<odoo>
+    <record id="view_chatroom_connector_form_telegram" model="ir.ui.view">
+        <field name="name">chatroom.connector.form.telegram</field>
+        <field name="model">chatroom.connector</field>
+        <field
+            name="inherit_id"
+            ref="chatroom_connector.view_chatroom_connector_form"
+        />
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='status']" position="before">
+                <page
+                    string="Telegram Bot Configuration"
+                    name="telegram_config"
+                    invisible="connector_type != 'telegram'"
+                >
+                    <group>
+                        <group>
+                            <field
+                                name="api_key"
+                                string="Bot Token"
+                                password="True"
+                                placeholder="123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                                required="connector_type == 'telegram'"
+                            />
+                        </group>
+                        <group>
+                            <field
+                                name="error_message"
+                                readonly="1"
+                                invisible="not error_message"
+                                widget="text"
+                            />
+                        </group>
+                    </group>
+
+                    <div class="alert alert-info mt-3" role="alert">
+                        <h4>Setup Instructions:</h4>
+                        <ol>
+                            <li>Open Telegram and search for <strong
+                            >@BotFather</strong></li>
+                            <li>Send <code>/newbot</code> and follow instructions</li>
+                            <li>Copy the Bot Token provided by BotFather</li>
+                            <li>Paste the token in Bot Token field above</li>
+                            <li>Click "Test Connection" to verify</li>
+                            <li>Copy the webhook URL from the main tab</li>
+                            <li>Set webhook using this command:
+                                <pre
+                            >curl -X POST https://api.telegram.org/bot&lt;YOUR_BOT_TOKEN&gt;/setWebhook \
+  -H 'Content-Type: application/json' \
+  -d '{"url": "&lt;YOUR_WEBHOOK_URL&gt;"}'</pre>
+                            </li>
+                            <li>Start chatting with your bot!</li>
+                        </ol>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_chatroom_connector_search_telegram" model="ir.ui.view">
+        <field name="name">chatroom.connector.search.telegram</field>
+        <field name="model">chatroom.connector</field>
+        <field
+            name="inherit_id"
+            ref="chatroom_connector.view_chatroom_connector_search"
+        />
+        <field name="arch" type="xml">
+            <xpath expr="//separator[@name='connector_types']" position="after">
+                <filter
+                    string="Telegram Bot"
+                    name="telegram"
+                    domain="[('connector_type', '=', 'telegram')]"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>
