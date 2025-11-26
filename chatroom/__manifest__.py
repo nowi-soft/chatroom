@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "Manage customer conversations and chat rooms",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",
@@ -14,6 +14,7 @@
         "contacts",
     ],
     "data": [
+        "data/ir_module_category_data.xml",
         "security/chatroom_security.xml",
         "security/ir.model.access.csv",
         "views/chatroom_room_views.xml",

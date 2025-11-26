@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="chatroom_connector_user_rule" model="ir.rule">
+        <field name="name">ChatRoom Connector: users can read</field>
+        <field name="model_id" ref="model_chatroom_connector" />
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('chatroom.group_chatroom_user'))]" />
+        <field name="perm_read" eval="True" />
+        <field name="perm_write" eval="False" />
+        <field name="perm_create" eval="False" />
+        <field name="perm_unlink" eval="False" />
+    </record>
+
+    <record id="chatroom_connector_manager_rule" model="ir.rule">
+        <field name="name">ChatRoom Connector: managers full access</field>
+        <field name="model_id" ref="model_chatroom_connector" />
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('chatroom.group_chatroom_manager'))]" />
+    </record>
+</odoo>

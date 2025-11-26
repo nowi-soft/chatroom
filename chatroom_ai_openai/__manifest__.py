@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom AI - OpenAI Provider",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "OpenAI/ChatGPT integration for AI agents",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",

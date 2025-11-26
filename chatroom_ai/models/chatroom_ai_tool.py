@@ -1,5 +1,3 @@
-"""AI Tools - Actions that agents can execute"""
-
 import json
 import logging
 

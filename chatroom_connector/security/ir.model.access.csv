@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_chatroom_connector_user,chatroom.connector.user,model_chatroom_connector,chatroom.group_chatroom_user,1,0,0,0
-access_chatroom_connector_manager,chatroom.connector.manager,model_chatroom_connector,chatroom.group_chatroom_manager,1,1,1,1
+access_chatroom_connector_user,access_chatroom_connector_user,model_chatroom_connector,chatroom.group_chatroom_user,1,0,0,0
+access_chatroom_connector_manager,access_chatroom_connector_manager,model_chatroom_connector,chatroom.group_chatroom_manager,1,1,1,1

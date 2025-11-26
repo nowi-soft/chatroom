@@ -15,7 +15,7 @@ class CrmLead(models.Model):
         help="All chat rooms linked to this lead",
     )
     chatroom_room_count = fields.Integer(
-        string="Chat Rooms",
+        string="# Chat Rooms",
         compute="_compute_chatroom_room_count",
     )
 

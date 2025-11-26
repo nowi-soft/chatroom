@@ -1,4 +1,4 @@
-import {Component, markup, onMounted, onWillStart, useState} from "@odoo/owl";
+import {Component, markup, onWillStart, useRef, useState} from "@odoo/owl";
 import {Layout} from "@web/search/layout";
 import {RecordList} from "../record_list/record_list";
 import {registry} from "@web/core/registry";
@@ -16,6 +16,10 @@ export class ChatroomApp extends Component {
         this.notification = useService("notification");
         this.action = useService("action");
         this.busService = useService("bus_service");
+        this.fileInputRef = useRef("fileInput");
+
+        this.mediaRecorder = null;
+        this.audioChunks = [];
 
         this.state = useState({
             myChats: [],
@@ -36,19 +40,17 @@ export class ChatroomApp extends Component {
             linkedContactIds: [],
             searchQuery: "",
             showClosedChats: false,
+            isRecordingAudio: false,
         });
 
-        this.interval = null;
-        this.subscribedChannels = new Set();
+        this.onMessageCreatedBound = this.onMessageCreated.bind(this);
+        this.onRoomUpdatedBound = this.onRoomUpdated.bind(this);
 
         this.busService.subscribe(
             "chatroom/message_created",
-            this.onMessageCreated.bind(this)
+            this.onMessageCreatedBound
         );
-        this.busService.subscribe(
-            "chatroom/room_updated",
-            this.onRoomUpdated.bind(this)
-        );
+        this.busService.subscribe("chatroom/room_updated", this.onRoomUpdatedBound);
 
         onWillStart(async () => {
             const hasGroup = await this.orm.call("res.users", "has_group", [
@@ -69,32 +71,14 @@ export class ChatroomApp extends Component {
                 await this.restoreRoom(this.props.action.params.room_id);
             }
         });
-
-        onMounted(() => {
-            this.interval = setInterval(async () => {
-                try {
-                    await this.loadChats();
-                } catch (error) {
-                    console.warn("Failed to refresh chats", error);
-                }
-            }, 60000);
-        });
     }
 
     willUnmount() {
-        if (this.interval) {
-            clearInterval(this.interval);
-            this.interval = null;
-        }
-
         this.busService.unsubscribe(
             "chatroom/message_created",
-            this.onMessageCreated.bind(this)
+            this.onMessageCreatedBound
         );
-        this.busService.unsubscribe(
-            "chatroom/room_updated",
-            this.onRoomUpdated.bind(this)
-        );
+        this.busService.unsubscribe("chatroom/room_updated", this.onRoomUpdatedBound);
     }
 
     async loadChats() {
@@ -104,12 +88,13 @@ export class ChatroomApp extends Component {
                 "name",
                 "assigned_to_id",
                 "state",
+                "needs_attention",
                 "message_count",
                 "last_message_date",
                 "last_message_preview",
                 "partner_ids",
             ],
-            order: "last_message_date desc",
+            order: "needs_attention desc, last_message_date desc",
         });
 
         if (this.state.isManager) {
@@ -152,6 +137,10 @@ export class ChatroomApp extends Component {
                 "message_type",
                 "create_date",
                 "is_internal",
+                "filename",
+                "mime_type",
+                "file_url",
+                "attachment_id",
             ],
             {order: "create_date asc"}
         );
@@ -509,6 +498,128 @@ export class ChatroomApp extends Component {
         }, 100);
     }
 
+    async onFileSelected(ev) {
+        const files = ev.target.files;
+        if (!files || files.length === 0 || !this.state.currentRoom) {
+            return;
+        }
+
+        for (const file of files) {
+            await this.uploadFile(file, "file");
+        }
+
+        ev.target.value = "";
+    }
+
+    async startRecordingAudio() {
+        if (!this.state.currentRoom) {
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.audioChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                }
+            };
+
+            this.mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.audioChunks, {
+                    type: "audio/ogg; codecs=opus",
+                });
+                const audioFile = new File([audioBlob], `audio_${Date.now()}.ogg`, {
+                    type: "audio/ogg",
+                });
+
+                stream.getTracks().forEach((track) => track.stop());
+
+                await this.uploadFile(audioFile, "audio");
+            };
+
+            this.mediaRecorder.start();
+            this.state.isRecordingAudio = true;
+        } catch (error) {
+            console.error("Error accessing microphone:", error);
+            this.notification.add("No se pudo acceder al micrófono", {type: "danger"});
+        }
+    }
+
+    stopRecordingAudio() {
+        if (this.mediaRecorder && this.state.isRecordingAudio) {
+            this.mediaRecorder.stop();
+            this.state.isRecordingAudio = false;
+        }
+    }
+
+    toggleAudioRecording() {
+        if (this.state.isRecordingAudio) {
+            this.stopRecordingAudio();
+        } else {
+            this.startRecordingAudio();
+        }
+    }
+
+    async uploadFile(file, messageType) {
+        try {
+            const formData = new FormData();
+            formData.append("files", file);
+            formData.append("csrf_token", odoo.csrf_token);
+
+            const uploadResponse = await fetch("/chatroom/upload_file", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error("File upload failed");
+            }
+
+            const uploadResult = await uploadResponse.json();
+            const attachmentId = uploadResult.attachments[0].id;
+
+            let finalMessageType = messageType;
+            if (messageType === "file") {
+                if (file.type.startsWith("image/")) {
+                    finalMessageType = "image";
+                } else if (file.type.startsWith("audio/")) {
+                    finalMessageType = "audio";
+                }
+            }
+            await this.orm.create("chatroom.message", [
+                {
+                    room_id: this.state.currentRoom.id,
+                    body: this.state.messageInput || "",
+                    direction: "outgoing",
+                    message_type: finalMessageType,
+                    attachment_id: attachmentId,
+                    filename: file.name,
+                    mime_type: file.type,
+                },
+            ]);
+
+            this.state.messageInput = "";
+            await this.loadMessages(this.state.currentRoom.id);
+
+            this.notification.add(
+                `${finalMessageType === "audio" ? "Audio" : "File"} sent successfully`,
+                {
+                    type: "success",
+                }
+            );
+
+            setTimeout(() => {
+                this.scrollToBottom();
+            }, 100);
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            this.notification.add("Failed to upload file", {type: "danger"});
+        }
+    }
+
     onMessageInputKeydown(ev) {
         if (ev.key === "Enter" && !ev.shiftKey) {
             ev.preventDefault();
@@ -682,91 +793,112 @@ export class ChatroomApp extends Component {
         }
     }
 
-    onMessageCreated(payload) {
-        const {room_id} = payload;
+    async onMessageCreated(payload) {
+        try {
+            const {room_id} = payload;
 
-        if (this.state.currentRoom && this.state.currentRoom.id === room_id) {
-            this.loadMessages(room_id);
+            if (this.state?.currentRoom && this.state.currentRoom.id === room_id) {
+                await this.loadMessages(room_id);
 
-            setTimeout(() => {
-                this.scrollToBottom();
-            }, 100);
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        this.scrollToBottom();
+                    });
+                });
+            }
+        } catch {
+            // Component might be destroyed, ignore
         }
     }
 
+    // eslint-disable-next-line complexity
     onRoomUpdated(payload) {
-        const {
-            id,
-            name,
-            assigned_to_id,
-            state,
-            message_count,
-            last_message_date,
-            last_message_preview,
-        } = payload;
+        try {
+            const {
+                id,
+                name,
+                assigned_to_id,
+                state,
+                needs_attention,
+                message_count,
+                last_message_date,
+                last_message_preview,
+            } = payload;
 
-        const userId = user.userId;
-        const isManager = this.state.isManager;
+            const userId = user.userId;
+            const isManager = this.state.isManager;
 
-        const isClosed = state === "closed";
-        const shouldBeInMyChats =
-            !isClosed && assigned_to_id && (isManager || assigned_to_id[0] === userId);
-        const shouldBeInUnassigned = !isClosed && !assigned_to_id;
+            const isClosed = state === "closed";
+            const shouldBeInMyChats =
+                !isClosed &&
+                assigned_to_id &&
+                (isManager || assigned_to_id[0] === userId);
+            const shouldBeInUnassigned = !isClosed && !assigned_to_id;
 
-        const myChatIndex = this.state.myChats.findIndex((r) => r.id === id);
-        const unassignedIndex = this.state.unassignedChats.findIndex(
-            (r) => r.id === id
-        );
-        const closedIndex = this.state.closedChats.findIndex((r) => r.id === id);
+            const myChatIndex = this.state.myChats.findIndex((r) => r.id === id);
+            const unassignedIndex = this.state.unassignedChats.findIndex(
+                (r) => r.id === id
+            );
+            const closedIndex = this.state.closedChats.findIndex((r) => r.id === id);
 
-        if (myChatIndex !== -1) {
-            this.state.myChats.splice(myChatIndex, 1);
-        }
-        if (unassignedIndex !== -1) {
-            this.state.unassignedChats.splice(unassignedIndex, 1);
-        }
-        if (closedIndex !== -1) {
-            this.state.closedChats.splice(closedIndex, 1);
-        }
+            if (myChatIndex !== -1) {
+                this.state.myChats.splice(myChatIndex, 1);
+            }
+            if (unassignedIndex !== -1) {
+                this.state.unassignedChats.splice(unassignedIndex, 1);
+            }
+            if (closedIndex !== -1) {
+                this.state.closedChats.splice(closedIndex, 1);
+            }
 
-        const roomData = {
-            id,
-            name,
-            assigned_to_id: assigned_to_id || false,
-            state,
-            message_count,
-            last_message_date,
-            last_message_preview,
-        };
+            const roomData = {
+                id,
+                name,
+                assigned_to_id: assigned_to_id || false,
+                state,
+                needs_attention: needs_attention || false,
+                message_count,
+                last_message_date,
+                last_message_preview,
+            };
 
-        if (isClosed) {
-            this.state.closedChats.unshift(roomData);
+            if (isClosed) {
+                this.state.closedChats.unshift(roomData);
 
-            this.state.closedChats.sort((a, b) => {
-                if (!a.last_message_date) return 1;
-                if (!b.last_message_date) return -1;
-                return new Date(b.last_message_date) - new Date(a.last_message_date);
-            });
-        } else if (shouldBeInMyChats) {
-            this.state.myChats.unshift(roomData);
+                this.state.closedChats.sort((a, b) => {
+                    if (!a.last_message_date) return 1;
+                    if (!b.last_message_date) return -1;
+                    return (
+                        new Date(b.last_message_date) - new Date(a.last_message_date)
+                    );
+                });
+            } else if (shouldBeInMyChats) {
+                this.state.myChats.unshift(roomData);
 
-            this.state.myChats.sort((a, b) => {
-                if (!a.last_message_date) return 1;
-                if (!b.last_message_date) return -1;
-                return new Date(b.last_message_date) - new Date(a.last_message_date);
-            });
-        } else if (shouldBeInUnassigned) {
-            this.state.unassignedChats.unshift(roomData);
+                this.state.myChats.sort((a, b) => {
+                    if (!a.last_message_date) return 1;
+                    if (!b.last_message_date) return -1;
+                    return (
+                        new Date(b.last_message_date) - new Date(a.last_message_date)
+                    );
+                });
+            } else if (shouldBeInUnassigned) {
+                this.state.unassignedChats.unshift(roomData);
 
-            this.state.unassignedChats.sort((a, b) => {
-                if (!a.last_message_date) return 1;
-                if (!b.last_message_date) return -1;
-                return new Date(b.last_message_date) - new Date(a.last_message_date);
-            });
-        }
+                this.state.unassignedChats.sort((a, b) => {
+                    if (!a.last_message_date) return 1;
+                    if (!b.last_message_date) return -1;
+                    return (
+                        new Date(b.last_message_date) - new Date(a.last_message_date)
+                    );
+                });
+            }
 
-        if (this.state.currentRoom && this.state.currentRoom.id === id) {
-            Object.assign(this.state.currentRoom, roomData);
+            if (this.state?.currentRoom && this.state.currentRoom.id === id) {
+                Object.assign(this.state.currentRoom, roomData);
+            }
+        } catch {
+            // Component might be destroyed, ignore
         }
     }
 }

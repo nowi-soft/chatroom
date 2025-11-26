@@ -100,9 +100,6 @@ class ChatroomRoom(models.Model):
         self._notify_room_updated()
         return True
 
-    def notify_room_updated(self):
-        return self._notify_room_updated()
-
     def _notify_room_updated(self):
         for room in self:
             payload = {
@@ -119,43 +116,23 @@ class ChatroomRoom(models.Model):
                 "last_message_preview": room.last_message_preview,
             }
 
-            self.env.cr.execute(
-                """
-                SELECT DISTINCT uid
-                FROM res_groups_users_rel
-                WHERE gid IN %s
-            """,
-                (
-                    tuple(
-                        [
-                            self.env.ref("chatroom.group_chatroom_user").id,
-                            self.env.ref("chatroom.group_chatroom_manager").id,
-                        ]
-                    ),
-                ),
-            )
-            user_ids = [row[0] for row in self.env.cr.fetchall()]
-            users_to_notify = self.env["res.users"].browse(user_ids)
-
-            managers = users_to_notify.filtered(
-                lambda u: u.has_group("chatroom.group_chatroom_manager")
-            )
-
-            regular_users = users_to_notify - managers
-            if room.assigned_to_id:
-                assigned_id = room.assigned_to_id.id
-                regular_users = regular_users.filtered(
-                    lambda u, aid=assigned_id: u.id == aid
-                )
-
-            users_to_send = managers | regular_users
+            chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
+            chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
+            all_chatroom_users = chatroom_users | chatroom_managers
 
             if room.state in ["assigned", "unassigned"]:
-                users_to_send = users_to_notify
+                users_to_notify = all_chatroom_users
+            else:
+                users_to_notify = chatroom_managers
+                if room.assigned_to_id and room.assigned_to_id in chatroom_users:
+                    users_to_notify |= room.assigned_to_id
 
-            for user in users_to_send:
+            for user in users_to_notify:
                 if user.partner_id:
                     user.partner_id._bus_send("chatroom/room_updated", payload)
+
+    def notify_room_updated(self):
+        return self._notify_room_updated()
 
     def action_create_partner_from_chat(self):
         self.ensure_one()

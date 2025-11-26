@@ -3,6 +3,14 @@ import {onMounted} from "@odoo/owl";
 import {patch} from "@web/core/utils/patch";
 
 patch(ChatroomApp.prototype, {
+    getChatItemClass(chat) {
+        return {
+            active: this.state.currentRoom?.id === chat.id,
+            "ai-active": chat.ai_enabled,
+            "needs-attention": chat.needs_attention,
+        };
+    },
+
     setup() {
         super.setup(...arguments);
 
@@ -29,7 +37,13 @@ patch(ChatroomApp.prototype, {
         const aiData = await this.orm.searchRead(
             "chatroom.room",
             [["id", "in", chatIds]],
-            ["id", "ai_enabled", "ai_agent_id", "ai_conversation_state"]
+            [
+                "id",
+                "ai_enabled",
+                "ai_agent_id",
+                "ai_conversation_state",
+                "needs_attention",
+            ]
         );
 
         const aiMap = {};
@@ -197,31 +211,35 @@ patch(ChatroomApp.prototype, {
     },
 
     async onRoomUpdated(payload) {
-        await super.onRoomUpdated(payload);
+        try {
+            await super.onRoomUpdated(payload);
 
-        const roomId = payload.id;
-        const [aiData] = await this.orm.searchRead(
-            "chatroom.room",
-            [["id", "=", roomId]],
-            ["ai_enabled", "ai_agent_id", "ai_conversation_state"]
-        );
-
-        if (aiData) {
-            const myChat = this.state.myChats.find((c) => c.id === roomId);
-            if (myChat) {
-                Object.assign(myChat, aiData);
-            }
-
-            const unassignedChat = this.state.unassignedChats.find(
-                (c) => c.id === roomId
+            const roomId = payload.id;
+            const [aiData] = await this.orm.searchRead(
+                "chatroom.room",
+                [["id", "=", roomId]],
+                ["ai_enabled", "ai_agent_id", "ai_conversation_state"]
             );
-            if (unassignedChat) {
-                Object.assign(unassignedChat, aiData);
-            }
 
-            if (this.state.currentRoom?.id === roomId) {
-                Object.assign(this.state.currentRoom, aiData);
+            if (aiData) {
+                const myChat = this.state.myChats.find((c) => c.id === roomId);
+                if (myChat) {
+                    Object.assign(myChat, aiData);
+                }
+
+                const unassignedChat = this.state.unassignedChats.find(
+                    (c) => c.id === roomId
+                );
+                if (unassignedChat) {
+                    Object.assign(unassignedChat, aiData);
+                }
+
+                if (this.state.currentRoom?.id === roomId) {
+                    Object.assign(this.state.currentRoom, aiData);
+                }
             }
+        } catch {
+            // Component might be destroyed, ignore
         }
     },
 });

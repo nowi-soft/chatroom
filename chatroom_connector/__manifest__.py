@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom Connector",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "External messaging platform connectors for ChatRoom",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",
@@ -10,6 +10,7 @@
         "chatroom",
     ],
     "data": [
+        "security/chatroom_connector_security.xml",
         "security/ir.model.access.csv",
         "views/chatroom_connector_views.xml",
     ],

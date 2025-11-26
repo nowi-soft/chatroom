@@ -1,3 +1,5 @@
+import base64
+
 from odoo import http
 from odoo.http import request
 
@@ -142,3 +144,57 @@ class ChatroomController(http.Controller):
             "success": True,
             "related_records": room.get_related_records(),
         }
+
+    @http.route(
+        "/chatroom/upload_file", type="http", auth="user", methods=["POST"], csrf=True
+    )
+    def upload_file(self, **kwargs):
+        files = request.httprequest.files.getlist("files")
+        attachments = []
+
+        for file in files:
+            file_content = file.read()
+            file_b64 = base64.b64encode(file_content)
+
+            attachment = request.env["ir.attachment"].create(
+                {
+                    "name": file.filename,
+                    "datas": file_b64,
+                    "mimetype": file.content_type,
+                    "res_model": "chatroom.message",
+                    "res_id": 0,
+                }
+            )
+
+            attachments.append(
+                {
+                    "id": attachment.id,
+                    "name": attachment.name,
+                    "mimetype": attachment.mimetype,
+                }
+            )
+
+        return request.make_json_response({"attachments": attachments})
+
+    @http.route(
+        "/chatroom/file/<int:attachment_id>",
+        type="http",
+        auth="user",
+        methods=["GET"],
+        csrf=False,
+    )
+    def get_file(self, attachment_id, **kwargs):
+        attachment = request.env["ir.attachment"].browse(attachment_id)
+        if not attachment.exists():
+            return request.not_found()
+
+        file_content = base64.b64decode(attachment.datas)
+
+        headers = [
+            ("Content-Type", attachment.mimetype or "application/octet-stream"),
+            ("Content-Length", str(len(file_content))),
+            ("Accept-Ranges", "bytes"),
+            ("Cache-Control", "public, max-age=31536000"),
+        ]
+
+        return request.make_response(file_content, headers=headers)

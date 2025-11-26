@@ -1,9 +1,7 @@
-"""Base AI Provider - Abstract class for AI integrations"""
-
 import logging
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -33,8 +31,20 @@ class ChatroomAIProvider(models.Model):
     )
     default_max_tokens = fields.Integer(
         default=1000,
-        help="Maximum tokens in response",
+        help="Maximum tokens in response (0 = use provider default, min 500)",
     )
+
+    @api.constrains("default_max_tokens")
+    def _check_default_max_tokens(self):
+        for record in self:
+            if record.default_max_tokens < 0:
+                raise ValidationError(self.env._("Max tokens cannot be negative."))
+            if 0 < record.default_max_tokens < 500:
+                raise ValidationError(
+                    self.env._(
+                        "Max tokens must be at least 500 or 0 to use provider default."
+                    )
+                )
 
     state = fields.Selection(
         [
@@ -68,6 +78,7 @@ class ChatroomAIProvider(models.Model):
                         "message": "Connection successful!",
                         "type": "success",
                         "sticky": False,
+                        "next": {"type": "ir.actions.act_window_close"},
                     },
                 }
             else:
@@ -79,6 +90,7 @@ class ChatroomAIProvider(models.Model):
                         "message": f"Connection failed: {result.get('error')}",
                         "type": "danger",
                         "sticky": True,
+                        "next": {"type": "ir.actions.act_window_close"},
                     },
                 }
         except Exception as e:

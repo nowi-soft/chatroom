@@ -31,7 +31,6 @@
                 <field name="provider_id" />
                 <field name="active" invisible="1" />
                 <field name="total_responses" />
-                <field name="active_conversation_count" />
                 <field name="last_response_date" />
             </list>
         </field>
@@ -42,15 +41,22 @@
         <field name="model">chatroom.ai.agent</field>
         <field name="arch" type="xml">
             <form string="AI Agent">
-                <header>
-                    <button
-                        name="action_view_conversations"
-                        type="object"
-                        string="View Conversations"
-                        class="btn-secondary"
-                    />
-                </header>
+                <header />
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button
+                            name="action_view_conversations"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-comments"
+                        >
+                            <field
+                                name="conversation_count"
+                                widget="statinfo"
+                                string="Conversations"
+                            />
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" placeholder="AI Agent Name" />
@@ -65,13 +71,11 @@
                             />
                             <field name="temperature" />
                             <field name="max_tokens" />
-                            <field name="response_delay" />
+                            <field name="max_conversation_length" />
                         </group>
                         <group name="stats">
                             <field name="total_responses" />
                             <field name="total_tool_executions" />
-                            <field name="human_interventions" />
-                            <field name="active_conversation_count" />
                             <field name="last_response_date" />
                         </group>
                     </group>
@@ -84,13 +88,13 @@
                         </page>
 
                         <page string="Knowledge Base" name="knowledge">
-                            <field
-                                name="knowledge_ids"
-                                widget="many2many_tags"
-                                options="{'color_field': 'sequence'}"
-                            />
-                            <separator string="Knowledge Summary" />
-                            <field name="knowledge_summary" readonly="1" />
+                            <group>
+                                <field
+                                    name="knowledge_ids"
+                                    widget="many2many_tags"
+                                    options="{'no_create_edit': True}"
+                                />
+                            </group>
                         </page>
 
                         <page string="Tools &amp; Actions" name="tools">
@@ -100,27 +104,6 @@
                                     <field name="code_name" />
                                     <field name="description" />
                                     <field name="execution_count" />
-                                </list>
-                            </field>
-                        </page>
-
-                        <page string="Active Conversations" name="conversations">
-                            <field
-                                name="conversation_ids"
-                                context="{'default_agent_id': id}"
-                            >
-                                <list>
-                                    <field name="room_id" />
-                                    <field
-                                        name="state"
-                                        decoration-success="state == 'active'"
-                                        decoration-warning="state in ['paused', 'pending_approval']"
-                                    />
-                                    <field name="message_count" />
-                                    <field name="ai_responses" />
-                                    <field name="human_messages" />
-                                    <field name="start_date" />
-                                    <field name="last_message_date" />
                                 </list>
                             </field>
                         </page>

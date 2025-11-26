@@ -1,9 +1,10 @@
-"""AI Agent - Main configuration for automated chat responses"""
-
 import json
 import logging
 
+import requests
+
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -31,8 +32,20 @@ class ChatroomAIAgent(models.Model):
         help="Leave 0 to use provider's default",
     )
     max_tokens = fields.Integer(
-        help="Leave 0 to use provider's default",
+        help="Leave 0 to use provider's default, min 500",
     )
+
+    @api.constrains("max_tokens")
+    def _check_max_tokens(self):
+        for record in self:
+            if record.max_tokens < 0:
+                raise ValidationError(self.env._("Max tokens cannot be negative."))
+            if 0 < record.max_tokens < 500:
+                raise ValidationError(
+                    self.env._(
+                        "Max tokens must be at least 500 or 0 to use provider default."
+                    )
+                )
 
     system_prompt = fields.Text(
         required=True,
@@ -50,9 +63,6 @@ Always maintain context from previous messages in the conversation.""",
         "Knowledge Base",
         help="Documents and information the agent can use to answer questions",
     )
-    knowledge_summary = fields.Text(
-        compute="_compute_knowledge_summary",
-    )
 
     tool_ids = fields.Many2many(
         "chatroom.ai.tool",
@@ -63,11 +73,6 @@ Always maintain context from previous messages in the conversation.""",
         help="Actions the agent can perform (create leads, send emails, etc.)",
     )
 
-    response_delay = fields.Integer(
-        "Response Delay (seconds)",
-        default=2,
-        help="Delay before responding (to simulate human typing)",
-    )
     max_conversation_length = fields.Integer(
         "Max Conversation Messages",
         default=20,
@@ -79,7 +84,6 @@ Always maintain context from previous messages in the conversation.""",
 
     total_responses = fields.Integer(default=0, readonly=True)
     total_tool_executions = fields.Integer(default=0, readonly=True)
-    human_interventions = fields.Integer(default=0, readonly=True)
     last_response_date = fields.Datetime(string="Last Response", readonly=True)
 
     conversation_ids = fields.One2many(
@@ -87,30 +91,15 @@ Always maintain context from previous messages in the conversation.""",
         "agent_id",
         string="Conversations",
     )
-    active_conversation_count = fields.Integer(
-        compute="_compute_conversation_counts",
-        string="Active Conversations",
+    conversation_count = fields.Integer(
+        compute="_compute_conversation_count",
+        string="Conversations",
     )
 
-    @api.depends("knowledge_ids", "knowledge_ids.content")
-    def _compute_knowledge_summary(self):
+    @api.depends("conversation_ids")
+    def _compute_conversation_count(self):
         for agent in self:
-            if agent.knowledge_ids:
-                summary = f"{len(agent.knowledge_ids)} documents loaded:\n"
-                for knowledge in agent.knowledge_ids[:5]:
-                    summary += f"- {knowledge.name}\n"
-                if len(agent.knowledge_ids) > 5:
-                    summary += f"... and {len(agent.knowledge_ids) - 5} more"
-                agent.knowledge_summary = summary
-            else:
-                agent.knowledge_summary = "No knowledge base configured"
-
-    @api.depends("conversation_ids", "conversation_ids.state")
-    def _compute_conversation_counts(self):
-        for agent in self:
-            agent.active_conversation_count = len(
-                agent.conversation_ids.filtered(lambda c: c.state == "active")
-            )
+            agent.conversation_count = len(agent.conversation_ids)
 
     def action_view_conversations(self):
         self.ensure_one()
@@ -120,7 +109,10 @@ Always maintain context from previous messages in the conversation.""",
             "res_model": "chatroom.ai.conversation",
             "view_mode": "list,form",
             "domain": [("agent_id", "=", self.id)],
-            "context": {"default_agent_id": self.id},
+            "context": {
+                "default_agent_id": self.id,
+                "search_default_active": 1,
+            },
         }
 
     def should_respond_to_room(self, room):
@@ -164,20 +156,61 @@ Always maintain context from previous messages in the conversation.""",
 
         conversation = self.get_or_create_conversation(room)
 
+        if message.message_type == "audio":
+            transcription = self._transcribe_audio(message)
+            if transcription:
+                message.sudo().write(
+                    {"body": f"{message.body}\n\n[Transcripción]: {transcription}"}
+                )
+            else:
+                _logger.warning(f"Could not transcribe audio message {message.id}")
+                return
+
         conversation.add_message(message)
 
-        try:
-            if hasattr(self, "with_delay"):
-                self.with_delay(
-                    eta=self.response_delay
-                ).sudo()._generate_and_send_response(conversation.id)
-            else:
-                import time
+        self._generate_and_send_response(conversation.id)
 
-                time.sleep(self.response_delay)
-                self._generate_and_send_response(conversation.id)
+    def _transcribe_audio(self, message):
+        self.ensure_one()
+
+        if not message.attachment_id and not message.file_url:
+            _logger.error(f"Audio message {message.id} has no attachment or file URL")
+            return None
+
+        try:
+            if hasattr(self.provider_id, "transcribe_audio"):
+                if message.attachment_id:
+                    audio_data = message.attachment_id.datas
+                    mime_type = message.mime_type or message.attachment_id.mimetype
+
+                    transcription = self.provider_id.transcribe_audio(
+                        audio_data=audio_data,
+                        mime_type=mime_type,
+                    )
+                    return transcription
+                elif message.file_url:
+                    response = requests.get(message.file_url, timeout=30)
+                    if response.status_code == 200:
+                        audio_data = response.content
+                        transcription = self.provider_id.transcribe_audio(
+                            audio_data=audio_data,
+                            mime_type=message.mime_type or "audio/ogg",
+                        )
+                        return transcription
+            else:
+                _logger.warning(
+                    f"Provider {self.provider_id.name} does not support "
+                    "audio transcription"
+                )
+                return self.env._(
+                    "[Audio message received - transcription not available]"
+                )
+
         except Exception as e:
-            _logger.error(f"Error processing message for agent {self.name}: {str(e)}")
+            _logger.error(f"Error transcribing audio: {str(e)}", exc_info=True)
+            return None
+
+        return None
 
     def _generate_and_send_response(self, conversation_id):
         conversation = self.env["chatroom.ai.conversation"].browse(conversation_id)
@@ -205,6 +238,15 @@ Always maintain context from previous messages in the conversation.""",
                 tools=tools,
             )
 
+            if not result or not result.get("content"):
+                _logger.error(
+                    f"AI response empty or invalid for room {room.name}. "
+                    f"Result: {result}, "
+                    f"Has content: {bool(result.get('content') if result else False)}"
+                )
+                room.action_pause_ai_and_request_attention()
+                return
+
             if result.get("tool_calls"):
                 conversation.add_assistant_message_with_tools(
                     content=result.get("content"), tool_calls=result.get("tool_calls")
@@ -231,7 +273,6 @@ Always maintain context from previous messages in the conversation.""",
                 )
 
             if not result.get("content"):
-                _logger.warning(f"No content in AI response for room {room.name}")
                 return
 
             message_vals = {
@@ -239,10 +280,13 @@ Always maintain context from previous messages in the conversation.""",
                 "body": result["content"],
                 "direction": "outgoing",
                 "user_id": self.env.ref("base.user_admin").id,
+                "author_name": agent.name,
                 "is_ai_generated": True,
             }
 
-            self.env["chatroom.message"].sudo().create(message_vals)
+            ai_message = self.env["chatroom.message"].sudo().create(message_vals)
+
+            conversation.add_message(ai_message)
 
             agent.sudo().write(
                 {
@@ -254,6 +298,7 @@ Always maintain context from previous messages in the conversation.""",
         except Exception as e:
             _logger.error(f"Error generating AI response: {str(e)}")
             conversation.write({"state": "error", "error_message": str(e)})
+            room.action_pause_ai_and_request_attention()
 
     def _execute_tool_call(self, conversation, tool_call):
         self.ensure_one()
@@ -288,9 +333,9 @@ Always maintain context from previous messages in the conversation.""",
             )
 
             if isinstance(result, dict) and result.get("error"):
-                tool_note = f"🤖 AI Tool Executed: {tool.name} ❌"
+                tool_note = self.env._("🤖 AI Tool Executed: %s ❌", tool.name)
             else:
-                tool_note = f"🤖 AI Tool Executed: {tool.name} ✅"
+                tool_note = self.env._("🤖 AI Tool Executed: %s ✅", tool.name)
 
             self.env["chatroom.message"].create(
                 {
@@ -317,7 +362,7 @@ Always maintain context from previous messages in the conversation.""",
             self.env["chatroom.message"].create(
                 {
                     "room_id": conversation.room_id.id,
-                    "body": f"🤖 AI Tool Failed: {tool.name} ❌",
+                    "body": self.env._("🤖 AI Tool Failed: %s ❌", tool.name),
                     "direction": "outgoing",
                     "is_internal": True,
                     "user_id": self.env.ref("base.user_admin").id,

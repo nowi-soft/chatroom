@@ -7,4 +7,5 @@ from . import (
     chatroom_ai_tool,
     chatroom_message,
     chatroom_room,
+    res_config_settings,
 )

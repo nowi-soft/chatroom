@@ -98,10 +98,12 @@ class ChatroomAIProvider(models.Model):
             if not is_reasoning_model:
                 params["temperature"] = temperature
 
-            if uses_completion_tokens:
-                params["max_completion_tokens"] = max_tokens
-            else:
-                params["max_tokens"] = max_tokens
+            # Only set max_tokens if specified (0 means use OpenAI's default)
+            if max_tokens:
+                if uses_completion_tokens:
+                    params["max_completion_tokens"] = max_tokens
+                else:
+                    params["max_tokens"] = max_tokens
 
             if tools:
                 params["tools"] = tools
@@ -139,7 +141,23 @@ class ChatroomAIProvider(models.Model):
             return result
 
         except Exception as e:
-            _logger.error(f"OpenAI API error: {str(e)}")
+            error_str = str(e)
+            if (
+                "max_tokens" in error_str.lower()
+                and "output limit" in error_str.lower()
+            ):
+                _logger.error(f"OpenAI API error (max_tokens limit): {error_str}")
+                return {
+                    "content": "",
+                    "model": model,
+                    "usage": {
+                        "prompt_tokens": 0,
+                        "completion_tokens": max_tokens or 0,
+                        "total_tokens": max_tokens or 0,
+                    },
+                    "truncated": True,
+                }
+            _logger.error(f"OpenAI API error: {error_str}")
             raise
 
     def format_tool_for_provider(self, tool):
@@ -156,3 +174,61 @@ class ChatroomAIProvider(models.Model):
                 "parameters": tool_def["parameters"],
             },
         }
+
+    def transcribe_audio(self, audio_data, mime_type=None):
+        if self.provider_type != "openai":
+            return (
+                super().transcribe_audio(audio_data, mime_type)
+                if hasattr(super(), "transcribe_audio")
+                else None
+            )
+
+        try:
+            import base64
+            import io
+
+            import openai
+
+            client = openai.OpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base_url if self.api_base_url else None,
+                organization=self.organization_id if self.organization_id else None,
+            )
+
+            if isinstance(audio_data, str):
+                audio_bytes = base64.b64decode(audio_data)
+            else:
+                audio_bytes = audio_data
+
+            extension = "ogg"
+            if mime_type:
+                if "mp3" in mime_type or "mpeg" in mime_type:
+                    extension = "mp3"
+                elif "wav" in mime_type:
+                    extension = "wav"
+                elif "m4a" in mime_type:
+                    extension = "m4a"
+                elif "webm" in mime_type:
+                    extension = "webm"
+
+            audio_file = io.BytesIO(audio_bytes)
+            audio_file.name = f"audio.{extension}"
+
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                language="es",
+            )
+
+            return response.text
+
+        except ImportError:
+            _logger.error(
+                "openai package not installed. Install with: pip install openai"
+            )
+            return None
+        except Exception as e:
+            _logger.error(
+                f"OpenAI Whisper transcription error: {str(e)}", exc_info=True
+            )
+            return None

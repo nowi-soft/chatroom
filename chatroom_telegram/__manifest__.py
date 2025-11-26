@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom Telegram",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "Telegram Bot integration for ChatRoom",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",

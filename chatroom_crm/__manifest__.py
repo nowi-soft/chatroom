@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom CRM",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "Create CRM leads from chat conversations",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",

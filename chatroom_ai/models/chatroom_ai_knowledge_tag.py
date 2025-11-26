@@ -1,5 +1,3 @@
-"""Knowledge Tags - Categorization for knowledge base documents"""
-
 from odoo import fields, models
 
 

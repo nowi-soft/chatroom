@@ -31,9 +31,32 @@ class ChatroomMessage(models.Model):
         [
             ("text", "Text"),
             ("image", "Image"),
+            ("audio", "Audio"),
+            ("file", "File"),
         ],
         default="text",
         required=True,
+    )
+
+    attachment_id = fields.Many2one(
+        "ir.attachment",
+        string="Attachment",
+        ondelete="cascade",
+        help="Attachment for audio, image or file messages",
+    )
+    filename = fields.Char(
+        help="Original filename of the attachment",
+    )
+    mime_type = fields.Char(
+        help="MIME type of the attachment",
+    )
+    file_url = fields.Char(
+        string="File URL",
+        compute="_compute_file_url",
+        help="URL for the file (generated from attachment or external URL)",
+    )
+    media_duration = fields.Integer(
+        help="Duration in seconds for audio/video files",
     )
 
     is_internal = fields.Boolean(
@@ -53,9 +76,20 @@ class ChatroomMessage(models.Model):
             else:
                 msg.author_name = msg.room_id.name or "Customer"
 
+    @api.depends("attachment_id")
+    def _compute_file_url(self):
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        for msg in self:
+            if msg.attachment_id:
+                msg.file_url = f"{base_url}/chatroom/file/{msg.attachment_id.id}"
+            else:
+                msg.file_url = False
+
     @api.model_create_multi
     def create(self, vals_list):
         messages = super().create(vals_list)
+
+        rooms_to_notify = self.env["chatroom.room"]
 
         for message in messages:
             if message.direction == "incoming" and message.room_id.state == "closed":
@@ -65,9 +99,14 @@ class ChatroomMessage(models.Model):
                         "assigned_to_id": False,
                     }
                 )
-                message.room_id._notify_room_updated()
 
             message._notify_message_created()
+            rooms_to_notify |= message.room_id
+
+        self.env.flush_all()
+        for room in rooms_to_notify:
+            room._notify_room_updated()
+
         return messages
 
     def _get_message_text_with_author(self):
@@ -94,38 +133,24 @@ class ChatroomMessage(models.Model):
             "author_name": self.author_name,
             "message_type": self.message_type,
             "create_date": self.create_date.isoformat() if self.create_date else False,
+            "filename": self.filename,
+            "mime_type": self.mime_type,
+            "file_url": self.file_url,
+            "media_duration": self.media_duration,
+            "attachment_id": self.attachment_id.id if self.attachment_id else False,
         }
 
-        self.env.cr.execute(
-            """
-            SELECT DISTINCT uid
-            FROM res_groups_users_rel
-            WHERE gid IN %s
-        """,
-            (
-                tuple(
-                    [
-                        self.env.ref("chatroom.group_chatroom_user").id,
-                        self.env.ref("chatroom.group_chatroom_manager").id,
-                    ]
-                ),
-            ),
-        )
-        user_ids = [row[0] for row in self.env.cr.fetchall()]
-        users_to_notify = self.env["res.users"].browse(user_ids)
+        chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
+        chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
 
-        managers = users_to_notify.filtered(
-            lambda u: u.has_group("chatroom.group_chatroom_manager")
-        )
+        users_to_notify = chatroom_managers
 
-        regular_users = users_to_notify - managers
         if self.room_id.assigned_to_id:
-            regular_users = regular_users.filtered(
-                lambda u: u.id == self.room_id.assigned_to_id.id
-            )
+            if self.room_id.assigned_to_id in chatroom_users:
+                users_to_notify |= self.room_id.assigned_to_id
+        else:
+            users_to_notify |= chatroom_users - chatroom_managers
 
-        for user in managers | regular_users:
+        for user in users_to_notify:
             if user.partner_id:
                 user.partner_id._bus_send("chatroom/message_created", payload)
-
-        self.room_id._notify_room_updated()

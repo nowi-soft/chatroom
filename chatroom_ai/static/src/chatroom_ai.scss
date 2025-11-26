@@ -1,5 +1,29 @@
 /* AI Agent UI Styles */
 
+/* Chat needs attention - urgent human intervention required */
+.chat-item.needs-attention {
+    background: rgba(220, 53, 69, 0.1);
+    border-left: 3px solid var(--danger, #dc3545);
+    padding-left: 32px;
+
+    .chat-name {
+        color: var(--danger, #dc3545);
+        font-weight: 700;
+    }
+
+    &::before {
+        content: "⚠️";
+        position: absolute;
+        left: 8px;
+        top: 12px;
+        font-size: 16px;
+    }
+
+    &.active {
+        background: rgba(220, 53, 69, 0.15);
+    }
+}
+
 /* AI Active chat indicator in sidebar - uses Odoo color variables */
 .chat-item.ai-active {
     position: relative;

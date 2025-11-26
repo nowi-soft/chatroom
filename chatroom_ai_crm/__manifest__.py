@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom AI - CRM Tools",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "CRM tools for AI agents (create leads, search contacts)",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",

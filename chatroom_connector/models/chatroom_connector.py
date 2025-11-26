@@ -65,7 +65,14 @@ class ChatroomConnector(models.Model):
         }
 
     def send_message(
-        self, phone_number, message_text, message_type="text", media_url=None
+        self,
+        phone_number,
+        message_text,
+        message_type="text",
+        media_url=None,
+        filename=None,
+        mime_type=None,
+        attachment=None,
     ):
         self.ensure_one()
         raise NotImplementedError(

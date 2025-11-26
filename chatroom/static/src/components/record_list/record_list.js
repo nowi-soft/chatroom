@@ -1,4 +1,4 @@
-import {Component, onWillStart, useState} from "@odoo/owl";
+import {Component, onMounted, onWillStart, useState} from "@odoo/owl";
 import {useService} from "@web/core/utils/hooks";
 
 export class RecordList extends Component {
@@ -27,6 +27,24 @@ export class RecordList extends Component {
         onWillStart(async () => {
             await this.loadRecords();
         });
+
+        onMounted(() => {
+            this.onClickOutside = (ev) => {
+                if (!this.state.showMenu) return;
+
+                const dropdownElem = ev.target.closest(".dropdown");
+                if (!dropdownElem && this.state.showMenu) {
+                    this.state.showMenu = false;
+                }
+            };
+            document.addEventListener("click", this.onClickOutside, true);
+        });
+    }
+
+    willUnmount() {
+        if (this.onClickOutside) {
+            document.removeEventListener("click", this.onClickOutside, true);
+        }
     }
 
     async loadRecords() {

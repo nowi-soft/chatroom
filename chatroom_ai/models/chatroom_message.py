@@ -1,5 +1,3 @@
-"""Extension of chatroom.message for AI processing"""
-
 import logging
 
 from odoo import api, fields, models
@@ -22,6 +20,29 @@ class ChatroomMessage(models.Model):
         copy=False,
         help="Message waiting to be processed by AI",
     )
+    ai_processing_state = fields.Selection(
+        [
+            ("pending", "Pending"),
+            ("processing", "Processing"),
+            ("completed", "Completed"),
+            ("failed", "Failed"),
+        ],
+        string="AI Processing State",
+        default="pending",
+        index=True,
+        copy=False,
+        help="Current state of AI processing for this message",
+    )
+    ai_processing_date = fields.Datetime(
+        string="AI Processing Date",
+        copy=False,
+        help="Date when the message was last processed by AI",
+    )
+    ai_processing_error = fields.Text(
+        string="AI Processing Error",
+        copy=False,
+        help="Last error encountered during AI processing",
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -32,35 +53,101 @@ class ChatroomMessage(models.Model):
         )
 
         if incoming_messages:
-            incoming_messages.write({"ai_pending_processing": True})
+            incoming_messages.write(
+                {
+                    "ai_pending_processing": True,
+                    "ai_processing_state": "pending",
+                }
+            )
 
-            self.env.ref("chatroom_ai.ir_cron_process_ai_messages")._trigger()
+            batch_delay = int(
+                self.env["ir.config_parameter"]
+                .sudo()
+                .get_param("chatroom.ai_message_batch_delay", default="15")
+            )
+
+            for room in incoming_messages.mapped("room_id"):
+                room_messages = incoming_messages.filtered(
+                    lambda m, r=room: m.room_id == r
+                )
+                last_message = room_messages.sorted("create_date", reverse=True)[0]
+                last_message.with_delay(
+                    eta=batch_delay,
+                    max_retries=2,
+                    identity_key=f"ai_process_room_{room.id}",
+                    channel="root.ai",
+                    description=self.env._(
+                        "Process AI messages for room %(room_name)s",
+                        room_name=room.name,
+                    ),
+                )._job_process_room_messages()
 
         return messages
 
-    @api.model
-    def _cron_process_ai_messages(self, limit=50):
-        domain = [("ai_pending_processing", "=", True)]
-        pending_messages = self.search(domain, limit=limit, order="create_date asc")
+    def _job_process_room_messages(self):
+        self.ensure_one()
+        room = self.room_id
 
-        if not pending_messages:
+        if not room.ai_enabled:
             return
 
-        _logger.info("Processing %s pending AI messages", len(pending_messages))
+        room_messages = self.search(
+            [
+                ("room_id", "=", room.id),
+                ("ai_processing_state", "in", ["pending", "failed"]),
+            ],
+            order="create_date asc",
+        )
 
-        for message in pending_messages:
-            try:
-                message.ai_pending_processing = False
+        if not room_messages:
+            return
 
-                message._process_with_ai_agents(message)
+        processing_count = self.search_count(
+            [
+                ("room_id", "=", room.id),
+                ("ai_processing_state", "=", "processing"),
+            ]
+        )
 
-            except Exception as e:
-                _logger.error(
-                    f"Error processing AI message {message.id}: {e}", exc_info=True
-                )
+        if processing_count > 0:
+            return
 
-        if self.search_count(domain, limit=1):
-            self.env.ref("chatroom_ai.ir_cron_process_ai_messages")._trigger()
+        try:
+            room_messages.write(
+                {
+                    "ai_processing_state": "processing",
+                    "ai_processing_date": fields.Datetime.now(),
+                }
+            )
+
+            last_message = room_messages.sorted("create_date", reverse=True)[0]
+            last_message._process_with_ai_agents(last_message)
+
+            room_messages.write(
+                {
+                    "ai_pending_processing": False,
+                    "ai_processing_state": "completed",
+                    "ai_processing_error": False,
+                }
+            )
+
+        except Exception as e:
+            error_msg = str(e)
+            _logger.error(
+                f"Error processing AI messages for room {room.id}: {error_msg}",
+                exc_info=True,
+            )
+
+            room_messages.write(
+                {
+                    "ai_processing_state": "failed",
+                    "ai_processing_error": error_msg[:500],
+                    "ai_pending_processing": False,
+                }
+            )
+
+            room.write({"needs_attention": True})
+            raise
 
     def _process_with_ai_agents(self, message):
         room = message.room_id
@@ -102,36 +189,31 @@ class ChatroomMessage(models.Model):
             "is_ai_generated": self.is_ai_generated,
         }
 
-        self.env.cr.execute(
-            """
-            SELECT DISTINCT uid
-            FROM res_groups_users_rel
-            WHERE gid IN %s
-        """,
-            (
-                tuple(
-                    [
-                        self.env.ref("chatroom.group_chatroom_user").id,
-                        self.env.ref("chatroom.group_chatroom_manager").id,
-                    ]
-                ),
-            ),
-        )
-        user_ids = [row[0] for row in self.env.cr.fetchall()]
-        users_to_notify = self.env["res.users"].browse(user_ids)
+        try:
+            chatroom_users = self.env.ref("chatroom.group_chatroom_user").all_user_ids
+        except Exception as e:
+            _logger.error(f"Error getting chatroom users: {e}")
+            chatroom_users = self.env["res.users"]
 
-        managers = users_to_notify.filtered(
-            lambda u: u.has_group("chatroom.group_chatroom_manager")
-        )
+        try:
+            chatroom_managers = self.env.ref(
+                "chatroom.group_chatroom_manager"
+            ).all_user_ids
+        except Exception as e:
+            _logger.error(f"Error getting chatroom managers: {e}")
+            chatroom_managers = self.env["res.users"]
 
-        regular_users = users_to_notify - managers
+        users_to_notify = chatroom_managers
         if self.room_id.assigned_to_id:
-            regular_users = regular_users.filtered(
-                lambda u: u.id == self.room_id.assigned_to_id.id
-            )
+            if self.room_id.assigned_to_id in chatroom_users:
+                users_to_notify |= self.room_id.assigned_to_id
+        else:
+            users_to_notify |= chatroom_users - chatroom_managers
 
-        for user in managers | regular_users:
-            if user.partner_id:
+        notified_partners = set()
+        for user in users_to_notify:
+            if user.partner_id and user.partner_id.id not in notified_partners:
+                notified_partners.add(user.partner_id.id)
                 user.partner_id._bus_send("chatroom/message_created", payload)
 
         self.room_id._notify_room_updated()

@@ -1,8 +1,8 @@
 {
     "name": "ChatRoom Simulator",
     "version": "19.0.1.0.0",
-    "category": "",
-    "summary": "",
+    "category": "Services/ChatRoom",
+    "summary": "Simulate chat conversations for testing and demo",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
     "license": "LGPL-3",

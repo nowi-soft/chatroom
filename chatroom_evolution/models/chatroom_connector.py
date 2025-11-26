@@ -65,6 +65,7 @@ class ChatroomConnector(models.Model):
                             "message": "Connection successful!",
                             "type": "success",
                             "sticky": False,
+                            "next": {"type": "ir.actions.act_window_close"},
                         },
                     }
                 else:
@@ -77,6 +78,7 @@ class ChatroomConnector(models.Model):
                             "message": f"Instance {self.app_name} not found",
                             "type": "danger",
                             "sticky": True,
+                            "next": {"type": "ir.actions.act_window_close"},
                         },
                     }
             else:
@@ -89,6 +91,7 @@ class ChatroomConnector(models.Model):
                         "message": f"Connection failed: {response.text}",
                         "type": "danger",
                         "sticky": True,
+                        "next": {"type": "ir.actions.act_window_close"},
                     },
                 }
         except Exception as e:
@@ -101,21 +104,50 @@ class ChatroomConnector(models.Model):
                     "message": f"Connection error: {str(e)}",
                     "type": "danger",
                     "sticky": True,
+                    "next": {"type": "ir.actions.act_window_close"},
                 },
             }
 
     def send_message(
-        self, phone_number, message_text, message_type="text", media_url=None
+        self,
+        phone_number,
+        message_text,
+        message_type="text",
+        media_url=None,
+        filename=None,
+        mime_type=None,
+        attachment=None,
     ):
         self.ensure_one()
         if self.connector_type == "evolution":
             return self._send_evolution_message(
-                phone_number, message_text, message_type, media_url
+                phone_number,
+                message_text,
+                message_type,
+                media_url,
+                filename,
+                mime_type,
+                attachment,
             )
-        return super().send_message(phone_number, message_text, message_type, media_url)
+        return super().send_message(
+            phone_number,
+            message_text,
+            message_type,
+            media_url,
+            filename,
+            mime_type,
+            attachment,
+        )
 
     def _send_evolution_message(
-        self, phone_number, message_text, message_type="text", media_url=None
+        self,
+        phone_number,
+        message_text,
+        message_type="text",
+        media_url=None,
+        filename=None,
+        mime_type=None,
+        attachment=None,
     ):
         try:
             base_url = self.base_url.rstrip("/")
@@ -123,6 +155,12 @@ class ChatroomConnector(models.Model):
 
             if "@" not in phone_number:
                 phone_number = f"{phone_number}@s.whatsapp.net"
+
+            if not media_url and attachment:
+                base_web_url = (
+                    self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+                )
+                media_url = f"{base_web_url}/web/content/{attachment.id}?download=true"
 
             if message_type == "text":
                 url = f"{base_url}/message/sendText/{self.app_name}"
@@ -135,13 +173,13 @@ class ChatroomConnector(models.Model):
                     "media": media_url,
                     "caption": message_text or "",
                 }
-            elif message_type == "document":
+            elif message_type == "file":
                 url = f"{base_url}/message/sendMedia/{self.app_name}"
                 data = {
                     "number": phone_number,
                     "mediatype": "document",
                     "media": media_url,
-                    "fileName": message_text or "document",
+                    "fileName": filename or message_text or "document",
                 }
             elif message_type == "audio":
                 url = f"{base_url}/message/sendMedia/{self.app_name}"
@@ -204,6 +242,8 @@ class ChatroomConnector(models.Model):
             message_text = ""
             media_url = None
             message_type = "text"
+            filename = None
+            mime_type = None
 
             if "conversation" in message_info:
                 message_text = message_info["conversation"]
@@ -212,25 +252,35 @@ class ChatroomConnector(models.Model):
                 message_text = message_info["extendedTextMessage"].get("text", "")
                 message_type = "text"
             elif "imageMessage" in message_info:
-                message_text = message_info["imageMessage"].get("caption", "Image")
-                media_url = message_info["imageMessage"].get("url", "")
+                img_msg = message_info["imageMessage"]
+                message_text = img_msg.get("caption", "")
+                media_url = img_msg.get("url", "")
                 message_type = "image"
+                mime_type = img_msg.get("mimetype", "image/jpeg")
+                filename = f"image_{key.get('id', 'unknown')}.jpg"
             elif "documentMessage" in message_info:
-                message_text = message_info["documentMessage"].get(
-                    "fileName", "Document"
-                )
-                media_url = message_info["documentMessage"].get("url", "")
-                message_type = "document"
+                doc_msg = message_info["documentMessage"]
+                filename = doc_msg.get("fileName", "Document")
+                message_text = filename
+                media_url = doc_msg.get("url", "")
+                message_type = "file"
+                mime_type = doc_msg.get("mimetype", "application/octet-stream")
             elif "audioMessage" in message_info:
-                message_text = "Voice message"
-                media_url = message_info["audioMessage"].get("url", "")
+                audio_msg = message_info["audioMessage"]
+                message_text = self.env._("Voice message")
+                media_url = audio_msg.get("url", "")
                 message_type = "audio"
+                mime_type = audio_msg.get("mimetype", "audio/ogg")
+                filename = f"audio_{key.get('id', 'unknown')}.ogg"
             elif "videoMessage" in message_info:
-                message_text = message_info["videoMessage"].get("caption", "Video")
-                media_url = message_info["videoMessage"].get("url", "")
-                message_type = "video"
+                video_msg = message_info["videoMessage"]
+                message_text = video_msg.get("caption", "")
+                media_url = video_msg.get("url", "")
+                message_type = "image"  # Tratamos video como imagen por ahora
+                mime_type = video_msg.get("mimetype", "video/mp4")
+                filename = f"video_{key.get('id', 'unknown')}.mp4"
             else:
-                message_text = "Unsupported message type"
+                message_text = self.env._("Unsupported message type")
 
             room = self.env["chatroom.room"].search(
                 [("connector_id", "=", self.id), ("external_id", "=", phone_number)],
@@ -247,33 +297,22 @@ class ChatroomConnector(models.Model):
                     }
                 )
 
-            message = self.env["chatroom.message"].create(
-                {
-                    "room_id": room.id,
-                    "body": message_text,
-                    "direction": "incoming",
-                    "author_name": sender_name,
-                    "message_type": message_type,
-                    "external_id": key.get("id", ""),
-                    "media_url": media_url,
-                }
-            )
+            message_vals = {
+                "room_id": room.id,
+                "body": message_text or self.env._("Media message"),
+                "direction": "incoming",
+                "author_name": sender_name,
+                "message_type": message_type,
+                "external_id": key.get("id", ""),
+                "file_url": media_url,
+                "filename": filename,
+                "mime_type": mime_type,
+            }
+
+            message = self.env["chatroom.message"].create(message_vals)
 
             self.messages_received += 1
             self.last_sync = fields.Datetime.now()
-
-            self.env["bus.bus"]._sendone(
-                room,
-                "chatroom/room_updated",
-                {
-                    "room": {
-                        "id": room.id,
-                        "name": room.name,
-                        "state": room.state,
-                        "last_message": message_text[:50],
-                    }
-                },
-            )
 
             return message
 

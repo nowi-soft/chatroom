@@ -1,5 +1,3 @@
-"""Knowledge Base - Documents and context for AI agents"""
-
 import base64
 import logging
 

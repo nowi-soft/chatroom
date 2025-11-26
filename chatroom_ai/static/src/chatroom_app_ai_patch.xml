@@ -6,6 +6,24 @@
         t-inherit="chatroom.ChatroomApp"
         t-inherit-mode="extension"
     >
+        <xpath
+            expr="//t[@t-foreach='state.myChats']/div[@class='chat-item']"
+            position="attributes"
+        >
+            <attribute
+                name="t-att-class"
+            >this.getChatItemClass ? this.getChatItemClass(chat) : { active: state.currentRoom?.id === chat.id }</attribute>
+        </xpath>
+
+        <xpath
+            expr="//t[@t-foreach='state.unassignedChats']/div[@class='chat-item']"
+            position="attributes"
+        >
+            <attribute
+                name="t-att-class"
+            >this.getChatItemClass ? this.getChatItemClass(chat) : { active: state.currentRoom?.id === chat.id }</attribute>
+        </xpath>
+
         <xpath expr="//div[@class='message']" position="attributes">
             <attribute name="t-att-class">{
                 'message-incoming': msg.direction === 'incoming' and !msg.is_internal,

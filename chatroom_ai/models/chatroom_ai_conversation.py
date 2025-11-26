@@ -1,5 +1,3 @@
-"""AI Conversation - Tracks context and history for each chat"""
-
 import json
 import logging
 
@@ -24,7 +22,6 @@ class ChatroomAIConversation(models.Model):
         [
             ("active", "Active"),
             ("paused", "Paused - Human Intervention"),
-            ("pending_approval", "Pending Approval"),
             ("completed", "Completed"),
             ("error", "Error"),
             ("testing", "Testing"),
@@ -41,8 +38,6 @@ class ChatroomAIConversation(models.Model):
         "Conversation Summary",
         help="AI-generated summary of older messages (for long conversations)",
     )
-
-    pending_response = fields.Text()
 
     message_count = fields.Integer(default=0)
     start_date = fields.Datetime(default=fields.Datetime.now, readonly=True)
@@ -105,7 +100,17 @@ class ChatroomAIConversation(models.Model):
 
         messages = []
 
-        system_content = self.agent_id.system_prompt
+        # Single system message combining temporal instructions + user prompt
+        temporal_instructions = """IMPORTANT CONTEXT RULES:
+- Each message below includes a timestamp [YYYY-MM-DD HH:MM:SS]
+- This is an ongoing conversation - messages are historical context
+- Do NOT greet the user again if you already greeted them in previous messages
+- Only respond to the most recent message
+- Reference previous context when relevant
+
+"""
+
+        system_content = temporal_instructions + self.agent_id.system_prompt
 
         if self.agent_id.knowledge_ids:
             knowledge_content = "\n\n=== KNOWLEDGE BASE ===\n\n"
@@ -126,9 +131,21 @@ class ChatroomAIConversation(models.Model):
         try:
             context = json.loads(self.context_messages) if self.context_messages else []
             for msg in context:
+                content = msg.get("content", "")
+
+                if msg.get("timestamp") and content and msg.get("role") == "user":
+                    from datetime import datetime
+
+                    try:
+                        ts = datetime.fromisoformat(msg["timestamp"])
+                        time_str = ts.strftime("%Y-%m-%d %H:%M:%S")
+                        content = f"[{time_str}] {content}"
+                    except (ValueError, AttributeError) as e:
+                        _logger.debug("Could not parse timestamp: %s", e)
+
                 message = {
                     "role": msg["role"],
-                    "content": msg.get("content", ""),
+                    "content": content,
                 }
 
                 if "tool_calls" in msg:
@@ -198,50 +215,6 @@ class ChatroomAIConversation(models.Model):
 
     def action_resume(self):
         self.write({"state": "active"})
-        return True
-
-    def action_approve_response(self):
-        self.ensure_one()
-
-        if not self.pending_response:
-            return False
-
-        self.env["chatroom.message"].create(
-            {
-                "room_id": self.room_id.id,
-                "body": self.pending_response,
-                "direction": "outgoing",
-                "user_id": self.env.ref("base.user_admin").id,
-                "is_ai_generated": True,
-            }
-        )
-
-        self.write(
-            {
-                "pending_response": False,
-                "state": "active",
-            }
-        )
-
-        self.agent_id.sudo().write(
-            {
-                "total_responses": self.agent_id.total_responses + 1,
-                "last_response_date": fields.Datetime.now(),
-            }
-        )
-
-        return True
-
-    def action_reject_response(self):
-        self.ensure_one()
-
-        self.write(
-            {
-                "pending_response": False,
-                "state": "paused",
-            }
-        )
-
         return True
 
     def action_complete(self):

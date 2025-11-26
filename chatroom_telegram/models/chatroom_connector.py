@@ -1,3 +1,4 @@
+import base64
 import logging
 
 import requests
@@ -58,6 +59,7 @@ class ChatroomConnector(models.Model):
                             ),
                             "type": "success",
                             "sticky": False,
+                            "next": {"type": "ir.actions.act_window_close"},
                         },
                     }
                 else:
@@ -72,6 +74,7 @@ class ChatroomConnector(models.Model):
                             ),
                             "type": "danger",
                             "sticky": True,
+                            "next": {"type": "ir.actions.act_window_close"},
                         },
                     }
             else:
@@ -84,6 +87,7 @@ class ChatroomConnector(models.Model):
                         "message": (f"Connection failed: {response.text}"),
                         "type": "danger",
                         "sticky": True,
+                        "next": {"type": "ir.actions.act_window_close"},
                     },
                 }
         except Exception as e:
@@ -96,21 +100,50 @@ class ChatroomConnector(models.Model):
                     "message": (f"Connection error: {str(e)}"),
                     "type": "danger",
                     "sticky": True,
+                    "next": {"type": "ir.actions.act_window_close"},
                 },
             }
 
     def send_message(
-        self, phone_number, message_text, message_type="text", media_url=None
+        self,
+        phone_number,
+        message_text,
+        message_type="text",
+        media_url=None,
+        filename=None,
+        mime_type=None,
+        attachment=None,
     ):
         self.ensure_one()
         if self.connector_type == "telegram":
             return self._send_telegram_message(
-                phone_number, message_text, message_type, media_url
+                phone_number,
+                message_text,
+                message_type,
+                media_url,
+                filename,
+                mime_type,
+                attachment,
             )
-        return super().send_message(phone_number, message_text, message_type, media_url)
+        return super().send_message(
+            phone_number,
+            message_text,
+            message_type,
+            media_url,
+            filename,
+            mime_type,
+            attachment,
+        )
 
     def _send_telegram_message(
-        self, chat_id, message_text, message_type="text", media_url=None
+        self,
+        chat_id,
+        message_text,
+        message_type="text",
+        media_url=None,
+        filename=None,
+        mime_type=None,
+        attachment=None,
     ):
         try:
             base_url = f"https://api.telegram.org/bot{self.api_key}"
@@ -118,52 +151,69 @@ class ChatroomConnector(models.Model):
             if message_type == "text":
                 url = f"{base_url}/sendMessage"
                 data = {"chat_id": chat_id, "text": message_text}
-            elif message_type == "image":
-                url = f"{base_url}/sendPhoto"
-                data = {
-                    "chat_id": chat_id,
-                    "photo": media_url,
-                    "caption": message_text or "",
-                }
-            elif message_type == "document":
-                url = f"{base_url}/sendDocument"
-                data = {
-                    "chat_id": chat_id,
-                    "document": media_url,
-                    "caption": message_text or "",
-                }
-            elif message_type == "audio":
-                url = f"{base_url}/sendAudio"
-                data = {
-                    "chat_id": chat_id,
-                    "audio": media_url,
-                    "caption": message_text or "",
-                }
-            elif message_type == "video":
-                url = f"{base_url}/sendVideo"
-                data = {
-                    "chat_id": chat_id,
-                    "video": media_url,
-                    "caption": message_text or "",
-                }
+                response = requests.post(url, json=data, timeout=30)
             else:
-                url = f"{base_url}/sendMessage"
-                data = {"chat_id": chat_id, "text": message_text}
-
-            response = requests.post(url, json=data, timeout=30)
-
-            if response.status_code == 200:
-                result = response.json()
-                if result.get("ok"):
-                    self.sudo().messages_sent += 1
-                    return {"success": True, "response": result["result"]}
+                file_data = None
+                if attachment and attachment.datas:
+                    file_data = base64.b64decode(attachment.datas)
+                    file_name = attachment.name
+                elif media_url:
+                    file_name = filename or "file"
                 else:
-                    return {"success": False, "error": result.get("description")}
-            else:
-                return {"success": False, "error": response.text}
+                    url = f"{base_url}/sendMessage"
+                    data = {"chat_id": chat_id, "text": message_text}
+                    response = requests.post(url, json=data, timeout=30)
+                    return self._process_telegram_response(response)
+
+                if message_type == "image":
+                    url = f"{base_url}/sendPhoto"
+                    field_name = "photo"
+                elif message_type == "audio":
+                    if mime_type and "ogg" in mime_type:
+                        url = f"{base_url}/sendVoice"
+                        field_name = "voice"
+                    else:
+                        url = f"{base_url}/sendAudio"
+                        field_name = "audio"
+                elif message_type == "video":
+                    url = f"{base_url}/sendVideo"
+                    field_name = "video"
+                else:
+                    url = f"{base_url}/sendDocument"
+                    field_name = "document"
+
+                data = {"chat_id": chat_id}
+                if message_text and message_text != file_name:
+                    data["caption"] = message_text
+
+                if file_data:
+                    files = {
+                        field_name: (
+                            file_name,
+                            file_data,
+                            mime_type or "application/octet-stream",
+                        )
+                    }
+                    response = requests.post(url, data=data, files=files, timeout=30)
+                else:
+                    data[field_name] = media_url
+                    response = requests.post(url, json=data, timeout=30)
+
+            return self._process_telegram_response(response)
 
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def _process_telegram_response(self, response):
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("ok"):
+                self.sudo().messages_sent += 1
+                return {"success": True, "response": result["result"]}
+            else:
+                return {"success": False, "error": result.get("description")}
+        else:
+            return {"success": False, "error": response.text}
 
     def process_incoming_webhook(self, data):
         self.ensure_one()
@@ -191,6 +241,8 @@ class ChatroomConnector(models.Model):
             message_text = ""
             media_url = None
             message_type = "text"
+            filename = None
+            mime_type = None
 
             if "text" in message_data:
                 message_text = message_data["text"]
@@ -200,32 +252,46 @@ class ChatroomConnector(models.Model):
                 largest_photo = max(photos, key=lambda p: p.get("file_size", 0))
                 file_id = largest_photo.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
-                message_text = message_data.get("caption", "Photo")
+                message_text = message_data.get("caption", "")
                 message_type = "image"
+                mime_type = "image/jpeg"
+                filename = f"photo_{message_data.get('message_id')}.jpg"
             elif "document" in message_data:
-                file_id = message_data["document"].get("file_id")
+                doc = message_data["document"]
+                file_id = doc.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
-                message_text = message_data.get("caption") or message_data[
-                    "document"
-                ].get("file_name", "Document")
-                message_type = "document"
+                filename = doc.get("file_name", "Document")
+                message_text = message_data.get("caption") or filename
+                message_type = "file"
+                mime_type = doc.get("mime_type", "application/octet-stream")
             elif "audio" in message_data:
-                file_id = message_data["audio"].get("file_id")
+                audio = message_data["audio"]
+                file_id = audio.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
-                message_text = message_data.get("caption", "Audio")
+                message_text = message_data.get("caption", "")
                 message_type = "audio"
+                mime_type = audio.get("mime_type", "audio/mpeg")
+                filename = audio.get(
+                    "file_name", f"audio_{message_data.get('message_id')}.mp3"
+                )
             elif "video" in message_data:
-                file_id = message_data["video"].get("file_id")
+                video = message_data["video"]
+                file_id = video.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
-                message_text = message_data.get("caption", "Video")
-                message_type = "video"
+                message_text = message_data.get("caption", "")
+                message_type = "image"  # Tratamos video como imagen por ahora
+                mime_type = video.get("mime_type", "video/mp4")
+                filename = f"video_{message_data.get('message_id')}.mp4"
             elif "voice" in message_data:
-                file_id = message_data["voice"].get("file_id")
+                voice = message_data["voice"]
+                file_id = voice.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
-                message_text = "Voice message"
+                message_text = self.env._("Voice message")
                 message_type = "audio"
+                mime_type = voice.get("mime_type", "audio/ogg")
+                filename = f"voice_{message_data.get('message_id')}.ogg"
             else:
-                message_text = "Unsupported message type"
+                message_text = self.env._("Unsupported message type")
 
             room = self.env["chatroom.room"].search(
                 [("connector_id", "=", self.id), ("external_id", "=", chat_id)], limit=1
@@ -242,36 +308,25 @@ class ChatroomConnector(models.Model):
                     }
                 )
 
-            message = self.env["chatroom.message"].create(
-                {
-                    "room_id": room.id,
-                    "body": message_text,
-                    "direction": "incoming",
-                    "author_name": sender_name,
-                    "message_type": message_type,
-                    "external_id": str(message_data.get("message_id", "")),
-                    "media_url": media_url,
-                }
-            )
+            message_vals = {
+                "room_id": room.id,
+                "body": message_text or self.env._("Media message"),
+                "direction": "incoming",
+                "author_name": sender_name,
+                "message_type": message_type,
+                "external_id": str(message_data.get("message_id", "")),
+                "file_url": media_url,
+                "filename": filename,
+                "mime_type": mime_type,
+            }
+
+            message = self.env["chatroom.message"].create(message_vals)
 
             self.sudo().write(
                 {
                     "messages_received": self.messages_received + 1,
                     "last_sync": fields.Datetime.now(),
                 }
-            )
-
-            self.env["bus.bus"]._sendone(
-                room,
-                "chatroom/room_updated",
-                {
-                    "room": {
-                        "id": room.id,
-                        "name": room.name,
-                        "state": room.state,
-                        "last_message": message_text[:50],
-                    }
-                },
             )
 
             return message
