@@ -279,7 +279,6 @@ patch(ChatroomApp.prototype, {
                         attachment_id: attachmentId,
                         filename: file.name,
                         mime_type: file.type,
-                        is_transcribing: true,
                     },
                 ]);
 

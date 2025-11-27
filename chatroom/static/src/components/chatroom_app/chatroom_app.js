@@ -44,6 +44,12 @@ export class ChatroomApp extends Component {
             imageModalUrl: null,
             imageModalAlt: null,
             quickMessages: [],
+            previewModal: {
+                show: false,
+                file: null,
+                type: null,
+                url: null,
+            },
         });
 
         this.onMessageCreatedBound = this.onMessageCreated.bind(this);
@@ -509,7 +515,12 @@ export class ChatroomApp extends Component {
         }
 
         for (const file of files) {
-            await this.uploadFile(file, "file");
+            const messageType = file.type.startsWith("image/")
+                ? "image"
+                : file.type.startsWith("audio/")
+                  ? "audio"
+                  : "file";
+            this.openPreviewModal(file, messageType);
         }
 
         ev.target.value = "";
@@ -541,7 +552,7 @@ export class ChatroomApp extends Component {
 
                 stream.getTracks().forEach((track) => track.stop());
 
-                await this.uploadFile(audioFile, "audio");
+                this.openPreviewModal(audioFile, "audio");
             };
 
             this.mediaRecorder.start();
@@ -567,7 +578,7 @@ export class ChatroomApp extends Component {
         }
     }
 
-    async uploadFile(file, messageType) {
+    async uploadFile(file, messageType, isInternal = false) {
         try {
             const formData = new FormData();
             formData.append("files", file);
@@ -602,18 +613,25 @@ export class ChatroomApp extends Component {
                     attachment_id: attachmentId,
                     filename: file.name,
                     mime_type: file.type,
+                    is_internal: isInternal,
                 },
             ]);
 
             this.state.messageInput = "";
             await this.loadMessages(this.state.currentRoom.id);
 
-            this.notification.add(
-                `${finalMessageType === "audio" ? "Audio" : "File"} sent successfully`,
-                {
+            if (isInternal) {
+                this.notification.add("File saved as internal note", {
                     type: "success",
-                }
-            );
+                });
+            } else {
+                this.notification.add(
+                    `${finalMessageType === "audio" ? "Audio" : "File"} sent successfully`,
+                    {
+                        type: "success",
+                    }
+                );
+            }
 
             setTimeout(() => {
                 this.scrollToBottom();
@@ -639,6 +657,46 @@ export class ChatroomApp extends Component {
     closeImageModal() {
         this.state.imageModalUrl = null;
         this.state.imageModalAlt = null;
+    }
+
+    openPreviewModal(file, type) {
+        const url = URL.createObjectURL(file);
+        this.state.previewModal = {
+            show: true,
+            file: file,
+            type: type,
+            url: url,
+        };
+    }
+
+    closePreviewModal() {
+        if (this.state.previewModal.url) {
+            URL.revokeObjectURL(this.state.previewModal.url);
+        }
+        this.state.previewModal = {
+            show: false,
+            file: null,
+            type: null,
+            url: null,
+        };
+    }
+
+    async confirmSendFile() {
+        const {file, type} = this.state.previewModal;
+        this.closePreviewModal();
+        // Map type to messageType for uploadFile
+        const messageType =
+            type === "audio" ? "audio" : type === "image" ? "image" : "file";
+        await this.uploadFile(file, messageType);
+    }
+
+    async confirmSendFileAsNote() {
+        const {file, type} = this.state.previewModal;
+        this.closePreviewModal();
+        // Map type to messageType for uploadFile
+        const messageType =
+            type === "audio" ? "audio" : type === "image" ? "image" : "file";
+        await this.uploadFile(file, messageType, true);
     }
 
     getAvailableTabs() {

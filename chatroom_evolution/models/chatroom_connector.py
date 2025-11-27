@@ -302,7 +302,7 @@ class ChatroomConnector(models.Model):
                 "mime_type": mime_type,
             }
 
-            if message_type == "audio":
+            if message_type == "audio" and room.ai_enabled:
                 message_vals["is_transcribing"] = True
                 message_vals["body"] = ""
 

@@ -64,6 +64,15 @@ class ChatroomAIConversation(models.Model):
         if message.is_internal:
             return
 
+        existing_ids = [msg.get("message_id") for msg in context]
+        if message.id in existing_ids:
+            _logger.warning(
+                "Message ID=%d already in context for conversation ID=%d",
+                message.id,
+                self.id,
+            )
+            return
+
         context.append(
             {
                 "role": role,
@@ -100,7 +109,6 @@ class ChatroomAIConversation(models.Model):
 
         messages = []
 
-        # Single system message combining temporal instructions + user prompt
         temporal_instructions = """IMPORTANT CONTEXT RULES:
 - Each message below includes a timestamp [YYYY-MM-DD HH:MM:SS]
 - This is an ongoing conversation - messages are historical context

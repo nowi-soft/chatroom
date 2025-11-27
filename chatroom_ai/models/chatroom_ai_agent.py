@@ -159,61 +159,6 @@ Always maintain context from previous messages in the conversation.""",
 
         return conversation
 
-    def process_incoming_message(self, message):
-        self.ensure_one()
-
-        room = message.room_id
-
-        if not self.should_respond_to_room(room):
-            return
-
-        conversation = self.get_or_create_conversation(room)
-
-        if message.message_type not in ["text", "audio"]:
-            if self.unsupported_media_message:
-                message_vals = {
-                    "room_id": room.id,
-                    "body": self.unsupported_media_message,
-                    "direction": "outgoing",
-                    "user_id": self.env.ref("base.user_admin").id,
-                    "author_name": self.name,
-                    "is_ai_generated": True,
-                }
-                self.env["chatroom.message"].sudo().create(message_vals)
-            return
-
-        if message.message_type == "audio":
-            if message.is_transcribed:
-                pass
-            elif message.is_transcription_failed:
-                return
-            else:
-                message.sudo().write({"is_transcribing": True})
-                message._notify_message_created()
-
-                transcription = self._transcribe_audio(message)
-                if transcription:
-                    message.sudo().write(
-                        {
-                            "body": transcription,
-                            "is_transcribing": False,
-                            "is_transcribed": True,
-                        }
-                    )
-                    message._notify_message_created()
-                else:
-                    message.sudo().write(
-                        {
-                            "is_transcribing": False,
-                            "is_transcription_failed": True,
-                        }
-                    )
-                    return
-
-        conversation.add_message(message)
-
-        self._generate_and_send_response(conversation.id)
-
     def _transcribe_audio(self, message):
         self.ensure_one()
 

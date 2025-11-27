@@ -556,11 +556,11 @@
 .message-audio {
     margin-top: 8px;
     display: block;
+    max-width: 300px;
 
     audio {
         display: block;
         width: 100%;
-        max-width: 300px;
         height: 40px;
     }
 
@@ -577,9 +577,13 @@
     }
 }
 
-.message-outgoing .message-audio .audio-caption {
-    background: var(--success-light, rgba(25, 135, 84, 0.1));
-    border-color: var(--success, rgba(25, 135, 84, 0.3));
+.message-outgoing .message-audio {
+    margin-left: auto;
+
+    .audio-caption {
+        background: var(--success-light, rgba(25, 135, 84, 0.1));
+        border-color: var(--success, rgba(25, 135, 84, 0.3));
+    }
 }
 
 .message-file {

@@ -154,7 +154,9 @@ class ChatroomMessage(models.Model):
                 }
             )
 
-            audio_messages = room_messages.filtered(lambda m: m.message_type == "audio")
+            audio_messages = room_messages.filtered(
+                lambda m: m.message_type == "audio" and m.direction == "incoming"
+            )
             for audio_msg in audio_messages.sorted("create_date", reverse=False):
                 if (
                     not audio_msg.is_transcribed
@@ -189,8 +191,52 @@ class ChatroomMessage(models.Model):
                                 }
                             )
 
-            last_message = room_messages.sorted("create_date", reverse=True)[0]
-            last_message._process_with_ai_agents(last_message)
+            agent = (
+                room.ai_agent_id
+                if room.ai_agent_id
+                else self.env["chatroom.ai.agent"].search(
+                    [("active", "=", True)], limit=1
+                )
+            )
+
+            if not agent:
+                _logger.warning(
+                    "No AI agent found for room '%s' (ID=%d)",
+                    room.name,
+                    room.id,
+                )
+                return
+
+            if not agent.should_respond_to_room(room):
+                return
+
+            conversation = agent.get_or_create_conversation(room)
+            has_unsupported_messages = False
+
+            for message in room_messages.sorted("create_date", reverse=False):
+                if message.message_type not in ["text", "audio"]:
+                    has_unsupported_messages = True
+                    continue
+
+                if message.message_type == "audio" and message.is_transcription_failed:
+                    continue
+
+                conversation.add_message(message)
+
+            if conversation.message_count > 0:
+                agent._generate_and_send_response(conversation.id)
+
+            if has_unsupported_messages and agent.unsupported_media_message:
+                self.env["chatroom.message"].sudo().create(
+                    {
+                        "room_id": room.id,
+                        "body": agent.unsupported_media_message,
+                        "direction": "outgoing",
+                        "user_id": self.env.ref("base.user_admin").id,
+                        "author_name": agent.name,
+                        "is_ai_generated": True,
+                    }
+                )
 
             room_messages.write(
                 {
@@ -217,23 +263,6 @@ class ChatroomMessage(models.Model):
 
             room.write({"needs_attention": True})
             raise
-
-    def _process_with_ai_agents(self, message):
-        room = message.room_id
-
-        if room.ai_enabled and room.ai_agent_id:
-            room.ai_agent_id.process_incoming_message(message)
-        else:
-            agents = self.env["chatroom.ai.agent"].search(
-                [
-                    ("active", "=", True),
-                ]
-            )
-
-            for agent in agents:
-                if agent.should_respond_to_room(room):
-                    agent.process_incoming_message(message)
-                    break
 
     def _get_message_text_with_author(self):
         self.ensure_one()
