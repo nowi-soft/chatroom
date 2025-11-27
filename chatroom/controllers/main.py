@@ -179,22 +179,45 @@ class ChatroomController(http.Controller):
     @http.route(
         "/chatroom/file/<int:attachment_id>",
         type="http",
-        auth="user",
+        auth="public",
         methods=["GET"],
         csrf=False,
+        cors="*",
     )
     def get_file(self, attachment_id, **kwargs):
-        attachment = request.env["ir.attachment"].browse(attachment_id)
-        if not attachment.exists():
+        try:
+            attachment = request.env["ir.attachment"].sudo().browse(attachment_id)
+            if not attachment.exists() or not attachment.datas:
+                return request.not_found()
+
+            file_content = base64.b64decode(attachment.datas)
+
+            headers = [
+                ("Content-Type", attachment.mimetype or "application/octet-stream"),
+                ("Content-Length", str(len(file_content))),
+                ("Accept-Ranges", "bytes"),
+                ("Cache-Control", "public, max-age=31536000"),
+                ("Access-Control-Allow-Origin", "*"),
+                ("Access-Control-Allow-Methods", "GET, OPTIONS"),
+                ("ngrok-skip-browser-warning", "true"),
+            ]
+
+            return request.make_response(file_content, headers=headers)
+        except Exception:
             return request.not_found()
 
-        file_content = base64.b64decode(attachment.datas)
+    @http.route("/chatroom/quick_messages", type="jsonrpc", auth="user")
+    def get_quick_messages(self, **kw):
+        quick_messages = request.env["chatroom.quick.message"].search(
+            [("active", "=", True)], order="sequence, name"
+        )
 
-        headers = [
-            ("Content-Type", attachment.mimetype or "application/octet-stream"),
-            ("Content-Length", str(len(file_content))),
-            ("Accept-Ranges", "bytes"),
-            ("Cache-Control", "public, max-age=31536000"),
+        return [
+            {
+                "id": msg.id,
+                "name": msg.name,
+                "message": msg.message,
+                "sequence": msg.sequence,
+            }
+            for msg in quick_messages
         ]
-
-        return request.make_response(file_content, headers=headers)

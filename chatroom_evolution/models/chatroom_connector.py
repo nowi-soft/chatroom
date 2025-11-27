@@ -261,7 +261,7 @@ class ChatroomConnector(models.Model):
             elif "documentMessage" in message_info:
                 doc_msg = message_info["documentMessage"]
                 filename = doc_msg.get("fileName", "Document")
-                message_text = filename
+                message_text = doc_msg.get("caption", "")
                 media_url = doc_msg.get("url", "")
                 message_type = "file"
                 mime_type = doc_msg.get("mimetype", "application/octet-stream")
@@ -272,13 +272,6 @@ class ChatroomConnector(models.Model):
                 message_type = "audio"
                 mime_type = audio_msg.get("mimetype", "audio/ogg")
                 filename = f"audio_{key.get('id', 'unknown')}.ogg"
-            elif "videoMessage" in message_info:
-                video_msg = message_info["videoMessage"]
-                message_text = video_msg.get("caption", "")
-                media_url = video_msg.get("url", "")
-                message_type = "image"  # Tratamos video como imagen por ahora
-                mime_type = video_msg.get("mimetype", "video/mp4")
-                filename = f"video_{key.get('id', 'unknown')}.mp4"
             else:
                 message_text = self.env._("Unsupported message type")
 
@@ -308,6 +301,10 @@ class ChatroomConnector(models.Model):
                 "filename": filename,
                 "mime_type": mime_type,
             }
+
+            if message_type == "audio":
+                message_vals["is_transcribing"] = True
+                message_vals["body"] = ""
 
             message = self.env["chatroom.message"].create(message_vals)
 

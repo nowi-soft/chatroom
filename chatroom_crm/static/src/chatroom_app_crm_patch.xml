@@ -12,7 +12,7 @@
         </xpath>
 
         <xpath
-            expr="//t[@t-if='state.rightPanelTab === tab.id']/RecordList"
+            expr="//t[@t-if='state.rightPanelTab === tab.id']/t[@t-else='']/RecordList"
             position="attributes"
         >
             <attribute

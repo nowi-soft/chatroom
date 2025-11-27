@@ -185,7 +185,6 @@ class ChatroomAIProvider(models.Model):
 
         try:
             import base64
-            import io
 
             import openai
 
@@ -195,10 +194,29 @@ class ChatroomAIProvider(models.Model):
                 organization=self.organization_id if self.organization_id else None,
             )
 
+            audio_len = len(audio_data) if audio_data else 0
+            _logger.info(f"audio_data type: {type(audio_data)}, len: {audio_len}")
+
             if isinstance(audio_data, str):
+                _logger.info("Decoding from string")
                 audio_bytes = base64.b64decode(audio_data)
+            elif isinstance(audio_data, bytes):
+                _logger.info("Already bytes, checking if base64...")
+                try:
+                    decoded = base64.b64decode(audio_data)
+                    if decoded[:4] == b"OggS" or decoded[:4] == b"RIFF":
+                        _logger.info("Was base64 encoded bytes, decoded successfully")
+                        audio_bytes = decoded
+                    else:
+                        _logger.info("Already raw bytes")
+                        audio_bytes = audio_data
+                except Exception:
+                    _logger.info("Not base64, using as-is")
+                    audio_bytes = audio_data
             else:
                 audio_bytes = audio_data
+
+            import tempfile
 
             extension = "ogg"
             if mime_type:
@@ -210,17 +228,36 @@ class ChatroomAIProvider(models.Model):
                     extension = "m4a"
                 elif "webm" in mime_type:
                     extension = "webm"
+                elif "flac" in mime_type:
+                    extension = "flac"
 
-            audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = f"audio.{extension}"
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=f".{extension}", mode="wb"
+            ) as temp_file:
+                temp_file.write(audio_bytes)
+                temp_file_path = temp_file.name
 
-            response = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                language="es",
+            _logger.info(
+                f"Created temp file: {temp_file_path}, "
+                f"size: {len(audio_bytes)}, extension: {extension}"
             )
+            _logger.info(f"First 4 bytes: {audio_bytes[:4].hex()}")
 
-            return response.text
+            try:
+                with open(temp_file_path, "rb") as audio_file:
+                    _logger.info(f"Sending to OpenAI: filename={audio_file.name}")
+                    response = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="es",
+                    )
+                _logger.info("Transcription successful")
+                return response.text
+            finally:
+                import os
+
+                if os.path.exists(temp_file_path):
+                    os.unlink(temp_file_path)
 
         except ImportError:
             _logger.error(

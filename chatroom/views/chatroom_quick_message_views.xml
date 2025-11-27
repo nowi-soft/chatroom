@@ -1,0 +1,89 @@
+<odoo>
+    <record id="view_chatroom_quick_message_tree" model="ir.ui.view">
+        <field name="name">chatroom.quick.message.tree</field>
+        <field name="model">chatroom.quick.message</field>
+        <field name="arch" type="xml">
+            <list string="Quick Messages">
+                <field name="sequence" widget="handle" />
+                <field name="name" />
+                <field name="message" />
+                <field name="active" widget="boolean_toggle" />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_quick_message_form" model="ir.ui.view">
+        <field name="name">chatroom.quick.message.form</field>
+        <field name="model">chatroom.quick.message</field>
+        <field name="arch" type="xml">
+            <form string="Quick Message">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Message Title" />
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sequence" />
+                            <field name="active" />
+                        </group>
+                    </group>
+                    <group>
+                        <field
+                            name="message"
+                            widget="text"
+                            placeholder="Type your quick message here..."
+                        />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_chatroom_quick_message_search" model="ir.ui.view">
+        <field name="name">chatroom.quick.message.search</field>
+        <field name="model">chatroom.quick.message</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="message" />
+                <separator />
+                <filter
+                    string="Active"
+                    name="active"
+                    domain="[('active', '=', True)]"
+                />
+                <filter
+                    string="Archived"
+                    name="inactive"
+                    domain="[('active', '=', False)]"
+                />
+            </search>
+        </field>
+    </record>
+
+    <record id="action_chatroom_quick_message" model="ir.actions.act_window">
+        <field name="name">Quick Messages</field>
+        <field name="res_model">chatroom.quick.message</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Quick Message
+            </p>
+            <p>
+                Quick messages allow you to send predefined responses quickly to customers.
+            </p>
+        </field>
+    </record>
+
+    <menuitem
+        id="menu_chatroom_quick_message"
+        name="Quick Messages"
+        parent="menu_chatroom_config"
+        action="action_chatroom_quick_message"
+        sequence="20"
+        groups="group_chatroom_manager"
+    />
+</odoo>

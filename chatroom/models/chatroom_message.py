@@ -76,12 +76,20 @@ class ChatroomMessage(models.Model):
             else:
                 msg.author_name = msg.room_id.name or "Customer"
 
-    @api.depends("attachment_id")
+    @api.depends("attachment_id", "attachment_id.datas", "mime_type")
     def _compute_file_url(self):
-        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
         for msg in self:
-            if msg.attachment_id:
-                msg.file_url = f"{base_url}/chatroom/file/{msg.attachment_id.id}"
+            if msg.attachment_id and msg.attachment_id.datas:
+                if msg.message_type in ["file"]:
+                    msg.file_url = f"/chatroom/file/{msg.attachment_id.id}"
+                else:
+                    mime_type = msg.mime_type or "application/octet-stream"
+                    data_b64 = (
+                        msg.attachment_id.datas.decode("utf-8")
+                        if isinstance(msg.attachment_id.datas, bytes)
+                        else msg.attachment_id.datas
+                    )
+                    msg.file_url = f"data:{mime_type};base64,{data_b64}"
             else:
                 msg.file_url = False
 

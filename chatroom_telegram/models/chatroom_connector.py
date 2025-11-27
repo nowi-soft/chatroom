@@ -261,7 +261,7 @@ class ChatroomConnector(models.Model):
                 file_id = doc.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
                 filename = doc.get("file_name", "Document")
-                message_text = message_data.get("caption") or filename
+                message_text = message_data.get("caption", "")
                 message_type = "file"
                 mime_type = doc.get("mime_type", "application/octet-stream")
             elif "audio" in message_data:
@@ -274,19 +274,12 @@ class ChatroomConnector(models.Model):
                 filename = audio.get(
                     "file_name", f"audio_{message_data.get('message_id')}.mp3"
                 )
-            elif "video" in message_data:
-                video = message_data["video"]
-                file_id = video.get("file_id")
-                media_url = self._get_telegram_file_url(file_id)
-                message_text = message_data.get("caption", "")
-                message_type = "image"  # Tratamos video como imagen por ahora
-                mime_type = video.get("mime_type", "video/mp4")
-                filename = f"video_{message_data.get('message_id')}.mp4"
             elif "voice" in message_data:
                 voice = message_data["voice"]
                 file_id = voice.get("file_id")
                 media_url = self._get_telegram_file_url(file_id)
-                message_text = self.env._("Voice message")
+                caption = message_data.get("caption", "")
+                message_text = caption if caption else self.env._("🎤 Voice message")
                 message_type = "audio"
                 mime_type = voice.get("mime_type", "audio/ogg")
                 filename = f"voice_{message_data.get('message_id')}.ogg"
@@ -308,17 +301,41 @@ class ChatroomConnector(models.Model):
                     }
                 )
 
+            attachment_id = False
+            if media_url and message_type in ["audio", "image", "file"]:
+                try:
+                    file_response = requests.get(media_url, timeout=30)
+                    if file_response.status_code == 200:
+                        file_content = file_response.content
+                        file_b64 = base64.b64encode(file_content)
+                        attachment = self.env["ir.attachment"].create(
+                            {
+                                "name": filename or "file",
+                                "datas": file_b64,
+                                "mimetype": mime_type or "application/octet-stream",
+                                "res_model": "chatroom.message",
+                                "res_id": 0,
+                            }
+                        )
+                        attachment_id = attachment.id
+                except Exception as e:
+                    _logger.warning(f"Failed to download media from Telegram: {e}")
+
             message_vals = {
                 "room_id": room.id,
-                "body": message_text or self.env._("Media message"),
+                "body": message_text or "",
                 "direction": "incoming",
                 "author_name": sender_name,
                 "message_type": message_type,
                 "external_id": str(message_data.get("message_id", "")),
-                "file_url": media_url,
+                "attachment_id": attachment_id,
                 "filename": filename,
                 "mime_type": mime_type,
             }
+
+            if message_type == "audio":
+                message_vals["is_transcribing"] = True
+                message_vals["body"] = ""
 
             message = self.env["chatroom.message"].create(message_vals)
 

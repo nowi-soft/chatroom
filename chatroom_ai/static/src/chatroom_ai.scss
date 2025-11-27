@@ -89,15 +89,6 @@
     border-left: 3px solid var(--o-brand-primary) !important;
     position: relative;
 
-    &::before {
-        content: "🤖";
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        font-size: 14px;
-        opacity: 0.6;
-    }
-
     .message-author {
         color: var(--o-brand-primary) !important;
         font-weight: 600;

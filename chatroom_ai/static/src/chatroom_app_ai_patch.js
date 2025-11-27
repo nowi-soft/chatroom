@@ -1,5 +1,6 @@
+import {markup, onMounted} from "@odoo/owl";
+
 import {ChatroomApp} from "@chatroom/components/chatroom_app/chatroom_app";
-import {onMounted} from "@odoo/owl";
 import {patch} from "@web/core/utils/patch";
 
 patch(ChatroomApp.prototype, {
@@ -93,6 +94,43 @@ patch(ChatroomApp.prototype, {
 
         try {
             await super.loadMessages(roomId);
+
+            // Load AI-specific fields for messages
+            if (this.state.messages && this.state.messages.length > 0) {
+                const messageIds = this.state.messages.map((m) => m.id);
+                const aiMessages = await this.orm.searchRead(
+                    "chatroom.message",
+                    [["id", "in", messageIds]],
+                    [
+                        "id",
+                        "is_ai_generated",
+                        "is_transcribing",
+                        "is_transcribed",
+                        "is_transcription_failed",
+                        "body",
+                    ]
+                );
+
+                const aiMap = {};
+                aiMessages.forEach((msg) => {
+                    aiMap[msg.id] = msg;
+                });
+
+                this.state.messages = this.state.messages.map((msg) => {
+                    const aiData = aiMap[msg.id];
+                    if (aiData) {
+                        return {
+                            ...msg,
+                            is_ai_generated: aiData.is_ai_generated,
+                            is_transcribing: aiData.is_transcribing,
+                            is_transcribed: aiData.is_transcribed,
+                            is_transcription_failed: aiData.is_transcription_failed,
+                            body: aiData.body ? markup(aiData.body) : msg.body,
+                        };
+                    }
+                    return msg;
+                });
+            }
         } catch (error) {
             if (error.message !== "Component is destroyed") {
                 console.error("Error loading messages:", error);
@@ -202,6 +240,66 @@ patch(ChatroomApp.prototype, {
         }
 
         this.notification.add(message, {type: notifType});
+    },
+
+    async uploadFile(file, messageType) {
+        const finalMessageType =
+            messageType === "file"
+                ? file.type.startsWith("image/")
+                    ? "image"
+                    : file.type.startsWith("audio/")
+                      ? "audio"
+                      : "file"
+                : messageType;
+
+        if (finalMessageType === "audio") {
+            try {
+                const formData = new FormData();
+                formData.append("files", file);
+                formData.append("csrf_token", odoo.csrf_token);
+
+                const uploadResponse = await fetch("/chatroom/upload_file", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error("File upload failed");
+                }
+
+                const uploadResult = await uploadResponse.json();
+                const attachmentId = uploadResult.attachments[0].id;
+
+                await this.orm.create("chatroom.message", [
+                    {
+                        room_id: this.state.currentRoom.id,
+                        body: "",
+                        direction: "outgoing",
+                        message_type: "audio",
+                        attachment_id: attachmentId,
+                        filename: file.name,
+                        mime_type: file.type,
+                        is_transcribing: true,
+                    },
+                ]);
+
+                this.state.messageInput = "";
+                await this.loadMessages(this.state.currentRoom.id);
+
+                this.notification.add("Audio sent successfully", {
+                    type: "success",
+                });
+
+                setTimeout(() => {
+                    this.scrollToBottom();
+                }, 100);
+            } catch (error) {
+                console.error("Error uploading audio:", error);
+                this.notification.add("Failed to upload audio", {type: "danger"});
+            }
+        } else {
+            await super.uploadFile(file, messageType);
+        }
     },
 
     async loadChats() {

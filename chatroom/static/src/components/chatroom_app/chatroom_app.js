@@ -29,7 +29,7 @@ export class ChatroomApp extends Component {
             messages: [],
             loading: false,
             messageInput: "",
-            rightPanelTab: "contacts",
+            rightPanelTab: "quick_messages",
             isManager: false,
             rightPanelWidth: 400,
             isResizing: false,
@@ -41,6 +41,9 @@ export class ChatroomApp extends Component {
             searchQuery: "",
             showClosedChats: false,
             isRecordingAudio: false,
+            imageModalUrl: null,
+            imageModalAlt: null,
+            quickMessages: [],
         });
 
         this.onMessageCreatedBound = this.onMessageCreated.bind(this);
@@ -62,6 +65,7 @@ export class ChatroomApp extends Component {
             this.state.availableTabs = this.getAvailableTabs();
 
             await this.loadChats();
+            await this.loadQuickMessages();
 
             if (this.props.action?.params?.partner_id) {
                 await this.filterByPartner(this.props.action.params.partner_id);
@@ -627,8 +631,24 @@ export class ChatroomApp extends Component {
         }
     }
 
+    openImageModal(imageUrl, imageAlt) {
+        this.state.imageModalUrl = imageUrl;
+        this.state.imageModalAlt = imageAlt || "Image";
+    }
+
+    closeImageModal() {
+        this.state.imageModalUrl = null;
+        this.state.imageModalAlt = null;
+    }
+
     getAvailableTabs() {
         return [
+            {
+                id: "quick_messages",
+                name: "Quick Messages",
+                singular: "Quick Message",
+                icon: "fa-comments",
+            },
             {
                 id: "contacts",
                 name: "Contacts",
@@ -660,6 +680,46 @@ export class ChatroomApp extends Component {
             {limit: 50, order: "id desc"}
         );
         return records;
+    }
+
+    async loadQuickMessages() {
+        this.state.quickMessages = await this.orm.call(
+            "chatroom.quick.message",
+            "search_read",
+            [],
+            {
+                domain: [["active", "=", true]],
+                fields: ["name", "message", "sequence"],
+                order: "sequence, name",
+            }
+        );
+    }
+
+    async sendQuickMessage(message) {
+        if (!this.state.currentRoom) {
+            this.notification.add("Please select a chat first", {type: "warning"});
+            return;
+        }
+
+        await this.orm.create("chatroom.message", [
+            {
+                room_id: this.state.currentRoom.id,
+                body: message,
+                direction: "outgoing",
+            },
+        ]);
+
+        await this.loadMessages(this.state.currentRoom.id);
+        this.notification.add("Quick message sent", {type: "success"});
+
+        setTimeout(() => {
+            this.scrollToBottom();
+        }, 100);
+    }
+
+    copyQuickMessageToInput(message) {
+        this.state.messageInput = message;
+        this.notification.add("Message copied to input", {type: "info"});
     }
 
     showLinkMode() {

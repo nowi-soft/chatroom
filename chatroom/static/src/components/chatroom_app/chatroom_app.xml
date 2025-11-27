@@ -295,6 +295,12 @@
                                             class="badge bg-secondary ms-2"
                                         >Internal Note</span>
                                         <span
+                                            t-if="msg.message_type === 'image'"
+                                            class="badge bg-success ms-2"
+                                        >
+                                            <i class="fa fa-image" /> Image
+                                        </span>
+                                        <span
                                             t-if="msg.message_type === 'audio'"
                                             class="badge bg-info ms-2"
                                         >
@@ -312,16 +318,29 @@
                                     >
                                         <div class="message-audio">
                                             <audio
-                                                controls=""
+                                                controls="controls"
                                                 preload="metadata"
                                                 t-att-src="msg.file_url"
-                                                controlsList="nodownload"
                                             >
                                                 Your browser does not support the audio element.
                                             </audio>
+                                            <div class="audio-caption" />
+                                        </div>
+                                    </t>
+                                    <t
+                                        t-elif="msg.message_type === 'image' and msg.file_url"
+                                    >
+                                        <div class="message-image">
+                                            <img
+                                                t-att-src="msg.file_url"
+                                                t-att-alt="msg.filename or 'Image'"
+                                                class="chat-image"
+                                                style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;"
+                                                t-on-click="() => this.openImageModal(msg.file_url, msg.filename)"
+                                            />
                                             <div
-                                                t-if="msg.body"
-                                                class="audio-caption"
+                                                t-if="msg.body and msg.body !== msg.filename and msg.body.trim()"
+                                                class="image-caption"
                                                 t-out="msg.body"
                                             />
                                         </div>
@@ -341,7 +360,7 @@
                                                 />
                                             </a>
                                             <div
-                                                t-if="msg.body and msg.body !== msg.filename"
+                                                t-if="msg.body and msg.body !== msg.filename and msg.body.trim()"
                                                 class="file-caption"
                                                 t-out="msg.body"
                                             />
@@ -463,22 +482,98 @@
                     <div class="right-panel-content">
                         <t t-foreach="state.availableTabs" t-as="tab" t-key="tab.id">
                             <t t-if="state.rightPanelTab === tab.id">
-                                <RecordList
-                                    tab="tab"
-                                    onRecordClick.bind="openRecord"
-                                    onRecordLink.bind="linkRecordToChat"
-                                    onRecordExpand.bind="openRecordFullScreen"
-                                    onCreateRecord.bind="tab.id === 'contacts' ? createPartnerFromChat : null"
-                                    onLinkExisting.bind="showLinkMode"
-                                    linkMode="tab.id === 'contacts' ? state.linkContactMode : (tab.id === 'leads' ? state.linkLeadMode : false)"
-                                    linkedRecordIds="tab.id === 'contacts' ? state.linkedContactIds : (tab.id === 'leads' ? state.linkedLeadIds : [])"
-                                />
+                                <t t-if="tab.id === 'quick_messages'">
+                                    <div class="quick-messages-list">
+                                        <t t-if="state.quickMessages.length">
+                                            <t
+                                                t-foreach="state.quickMessages"
+                                                t-as="qm"
+                                                t-key="qm.id"
+                                            >
+                                                <div class="quick-message-item">
+                                                    <div class="quick-message-header">
+                                                        <span
+                                                            class="quick-message-title"
+                                                            t-esc="qm.name"
+                                                        />
+                                                    </div>
+                                                    <div
+                                                        class="quick-message-text"
+                                                        t-esc="qm.message"
+                                                    />
+                                                    <div class="quick-message-actions">
+                                                        <button
+                                                            class="btn-quick-action btn-quick-send"
+                                                            t-on-click="() => this.sendQuickMessage(qm.message)"
+                                                            title="Send message"
+                                                        >
+                                                            <i
+                                                                class="fa fa-paper-plane"
+                                                            />
+                                                        </button>
+                                                        <button
+                                                            class="btn-quick-action btn-quick-copy"
+                                                            t-on-click="() => this.copyQuickMessageToInput(qm.message)"
+                                                            title="Copy to input"
+                                                        >
+                                                            <i class="fa fa-copy" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="empty-quick-messages">
+                                                <i class="fa fa-comments fa-3x" />
+                                                <p>No quick messages configured</p>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <RecordList
+                                        tab="tab"
+                                        onRecordClick.bind="openRecord"
+                                        onRecordLink.bind="linkRecordToChat"
+                                        onRecordExpand.bind="openRecordFullScreen"
+                                        onCreateRecord.bind="tab.id === 'contacts' ? createPartnerFromChat : null"
+                                        onLinkExisting.bind="showLinkMode"
+                                        linkMode="tab.id === 'contacts' ? state.linkContactMode : (tab.id === 'leads' ? state.linkLeadMode : false)"
+                                        linkedRecordIds="tab.id === 'contacts' ? state.linkedContactIds : (tab.id === 'leads' ? state.linkedLeadIds : [])"
+                                    />
+                                </t>
                             </t>
                         </t>
                     </div>
                 </div>
             </div>
         </Layout>
+
+        <!-- Image Modal -->
+        <div
+            t-if="state.imageModalUrl"
+            class="modal fade show"
+            style="display: block; background-color: rgba(0,0,0,0.8);"
+            t-on-click="closeImageModal"
+        >
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content bg-transparent border-0">
+                    <div class="modal-body text-center p-0">
+                        <img
+                            t-att-src="state.imageModalUrl"
+                            t-att-alt="state.imageModalAlt"
+                            style="max-width: 100%; max-height: 90vh; border-radius: 8px;"
+                        />
+                    </div>
+                    <button
+                        type="button"
+                        class="btn-close btn-close-white position-absolute top-0 end-0 m-3"
+                        t-on-click="closeImageModal"
+                        style="z-index: 1;"
+                    />
+                </div>
+            </div>
+        </div>
     </t>
 
 </templates>

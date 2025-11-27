@@ -25,15 +25,27 @@
                             <field name="room_id" />
                             <field name="direction" />
                             <field name="message_type" />
+                            <field
+                                name="attachment_id"
+                                invisible="message_type == 'text'"
+                            />
                         </group>
                         <group>
                             <field name="user_id" />
                             <field name="author_name" />
                             <field name="create_date" />
+                            <field name="filename" invisible="message_type == 'text'" />
+                            <field
+                                name="mime_type"
+                                invisible="message_type == 'text'"
+                            />
                         </group>
                     </group>
                     <group>
                         <field name="body" />
+                    </group>
+                    <group invisible="message_type == 'text'">
+                        <field name="file_url" widget="url" />
                     </group>
                 </sheet>
             </form>
@@ -64,6 +76,21 @@
                     string="Text"
                     name="text"
                     domain="[('message_type', '=', 'text')]"
+                />
+                <filter
+                    string="Image"
+                    name="image"
+                    domain="[('message_type', '=', 'image')]"
+                />
+                <filter
+                    string="File"
+                    name="file"
+                    domain="[('message_type', '=', 'file')]"
+                />
+                <filter
+                    string="Audio"
+                    name="audio"
+                    domain="[('message_type', '=', 'audio')]"
                 />
                 <filter
                     string="Product"

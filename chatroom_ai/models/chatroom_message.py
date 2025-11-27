@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from odoo import api, fields, models
@@ -44,6 +45,19 @@ class ChatroomMessage(models.Model):
         help="Last error encountered during AI processing",
     )
 
+    is_transcribing = fields.Boolean(
+        "Transcribing",
+        default=False,
+    )
+    is_transcribed = fields.Boolean(
+        "Transcribed by AI",
+        default=False,
+    )
+    is_transcription_failed = fields.Boolean(
+        "Transcription Failed",
+        default=False,
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         messages = super().create(vals_list)
@@ -71,16 +85,36 @@ class ChatroomMessage(models.Model):
                     lambda m, r=room: m.room_id == r
                 )
                 last_message = room_messages.sorted("create_date", reverse=True)[0]
-                last_message.with_delay(
-                    eta=batch_delay,
-                    max_retries=2,
-                    identity_key=f"ai_process_room_{room.id}",
-                    channel="root.ai",
-                    description=self.env._(
-                        "Process AI messages for room %(room_name)s",
-                        room_name=room.name,
-                    ),
-                )._job_process_room_messages()
+
+                identity_key = f"ai_process_room_{room.id}"
+                existing_job = (
+                    self.env["queue.job"]
+                    .sudo()
+                    .search(
+                        [
+                            ("identity_key", "=", identity_key),
+                            ("state", "in", ["pending", "enqueued"]),
+                        ],
+                        limit=1,
+                    )
+                )
+
+                if existing_job:
+                    new_eta = fields.Datetime.now() + datetime.timedelta(
+                        seconds=batch_delay
+                    )
+                    existing_job.write({"eta": new_eta})
+                else:
+                    last_message.with_delay(
+                        eta=batch_delay,
+                        max_retries=2,
+                        identity_key=identity_key,
+                        channel="root.ai",
+                        description=self.env._(
+                            "Process AI messages for room %(room_name)s",
+                            room_name=room.name,
+                        ),
+                    )._job_process_room_messages()
 
         return messages
 
@@ -119,6 +153,41 @@ class ChatroomMessage(models.Model):
                     "ai_processing_date": fields.Datetime.now(),
                 }
             )
+
+            audio_messages = room_messages.filtered(lambda m: m.message_type == "audio")
+            for audio_msg in audio_messages.sorted("create_date", reverse=False):
+                if (
+                    not audio_msg.is_transcribed
+                    and not audio_msg.is_transcription_failed
+                ):
+                    audio_msg.write({"is_transcribing": True})
+                    audio_msg._notify_message_created()
+
+                    agent = (
+                        room.ai_agent_id
+                        if room.ai_agent_id
+                        else self.env["chatroom.ai.agent"].search(
+                            [("active", "=", True)], limit=1
+                        )
+                    )
+                    if agent:
+                        transcription = agent._transcribe_audio(audio_msg)
+                        if transcription:
+                            audio_msg.write(
+                                {
+                                    "body": transcription,
+                                    "is_transcribing": False,
+                                    "is_transcribed": True,
+                                }
+                            )
+                            audio_msg._notify_message_created()
+                        else:
+                            audio_msg.write(
+                                {
+                                    "is_transcribing": False,
+                                    "is_transcription_failed": True,
+                                }
+                            )
 
             last_message = room_messages.sorted("create_date", reverse=True)[0]
             last_message._process_with_ai_agents(last_message)
@@ -187,6 +256,9 @@ class ChatroomMessage(models.Model):
             "create_date": self.create_date.isoformat() if self.create_date else False,
             "is_internal": self.is_internal,
             "is_ai_generated": self.is_ai_generated,
+            "is_transcribing": self.is_transcribing,
+            "is_transcribed": self.is_transcribed,
+            "is_transcription_failed": self.is_transcription_failed,
         }
 
         try:

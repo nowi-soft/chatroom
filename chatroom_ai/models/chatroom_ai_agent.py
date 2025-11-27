@@ -82,6 +82,19 @@ Always maintain context from previous messages in the conversation.""",
         ),
     )
 
+    unsupported_media_message = fields.Text(
+        default=(
+            "I'm sorry, but I cannot process images, files, or videos "
+            "at this time. Please describe what you need in text, and "
+            "I'll be happy to help you."
+        ),
+        help=(
+            "Message sent when the agent receives an image, file, or "
+            "video that it cannot process"
+        ),
+        required=True,
+    )
+
     total_responses = fields.Integer(default=0, readonly=True)
     total_tool_executions = fields.Integer(default=0, readonly=True)
     last_response_date = fields.Datetime(string="Last Response", readonly=True)
@@ -156,15 +169,46 @@ Always maintain context from previous messages in the conversation.""",
 
         conversation = self.get_or_create_conversation(room)
 
+        if message.message_type not in ["text", "audio"]:
+            if self.unsupported_media_message:
+                message_vals = {
+                    "room_id": room.id,
+                    "body": self.unsupported_media_message,
+                    "direction": "outgoing",
+                    "user_id": self.env.ref("base.user_admin").id,
+                    "author_name": self.name,
+                    "is_ai_generated": True,
+                }
+                self.env["chatroom.message"].sudo().create(message_vals)
+            return
+
         if message.message_type == "audio":
-            transcription = self._transcribe_audio(message)
-            if transcription:
-                message.sudo().write(
-                    {"body": f"{message.body}\n\n[Transcripción]: {transcription}"}
-                )
-            else:
-                _logger.warning(f"Could not transcribe audio message {message.id}")
+            if message.is_transcribed:
+                pass
+            elif message.is_transcription_failed:
                 return
+            else:
+                message.sudo().write({"is_transcribing": True})
+                message._notify_message_created()
+
+                transcription = self._transcribe_audio(message)
+                if transcription:
+                    message.sudo().write(
+                        {
+                            "body": transcription,
+                            "is_transcribing": False,
+                            "is_transcribed": True,
+                        }
+                    )
+                    message._notify_message_created()
+                else:
+                    message.sudo().write(
+                        {
+                            "is_transcribing": False,
+                            "is_transcription_failed": True,
+                        }
+                    )
+                    return
 
         conversation.add_message(message)
 
@@ -174,7 +218,6 @@ Always maintain context from previous messages in the conversation.""",
         self.ensure_one()
 
         if not message.attachment_id and not message.file_url:
-            _logger.error(f"Audio message {message.id} has no attachment or file URL")
             return None
 
         try:
@@ -198,16 +241,11 @@ Always maintain context from previous messages in the conversation.""",
                         )
                         return transcription
             else:
-                _logger.warning(
-                    f"Provider {self.provider_id.name} does not support "
-                    "audio transcription"
-                )
                 return self.env._(
                     "[Audio message received - transcription not available]"
                 )
 
-        except Exception as e:
-            _logger.error(f"Error transcribing audio: {str(e)}", exc_info=True)
+        except Exception:
             return None
 
         return None

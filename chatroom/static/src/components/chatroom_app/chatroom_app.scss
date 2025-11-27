@@ -6,7 +6,6 @@
     background: var(--body-bg);
 }
 
-/* Left Sidebar: Chat List */
 .chatroom-sidebar {
     width: 300px;
     background: var(--body-bg);
@@ -326,13 +325,11 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
-// Asegurar fondo sólido del dropdown con variables de Odoo
 .related-records-widget .dropdown-menu {
     background: var(--o-view-background-color, var(--body-bg, #ffffff)) !important;
     border: 1px solid var(--border-color, #dee2e6) !important;
 }
 
-/* Make contact action button show a solid background when menu is open */
 .related-records-widget .dropdown > .btn-link {
     background: rgba(var(--o-color-4-rgb, 108, 117, 125), 0.1) !important;
     border: 1px solid transparent !important;
@@ -558,23 +555,25 @@
 
 .message-audio {
     margin-top: 8px;
-    display: inline-block;
-    max-width: 100%;
+    display: block;
 
     audio {
+        display: block;
         width: 100%;
         max-width: 300px;
         height: 40px;
     }
 
     .audio-caption {
-        margin-top: 8px;
-        padding: 8px 12px;
-        background: var(--info-light, rgba(13, 202, 240, 0.1));
-        border: 1px solid var(--info, rgba(13, 202, 240, 0.3));
-        border-radius: 8px;
-        font-size: 14px;
-        color: var(--body-color);
+        &:not(:empty) {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: var(--info-light, rgba(13, 202, 240, 0.1));
+            border: 1px solid var(--info, rgba(13, 202, 240, 0.3));
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--body-color);
+        }
     }
 }
 
@@ -790,5 +789,109 @@
             margin: 0 4px 0 0;
             font-size: 12px;
         }
+    }
+}
+
+/* Quick Messages */
+.quick-messages-list {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.quick-message-item {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--o-view-background-color, var(--body-bg));
+    transition: all 0.2s;
+
+    &:hover {
+        border-color: var(--primary, #0d6efd);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+}
+
+.quick-message-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.quick-message-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--body-color);
+}
+
+.quick-message-text {
+    font-size: 13px;
+    color: var(--text-muted, #6c757d);
+    margin-bottom: 12px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.quick-message-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-quick-action {
+    border: none;
+    background: transparent;
+    color: var(--body-color);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.7;
+
+    &:hover {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    i {
+        font-size: 12px;
+    }
+}
+
+.o_dark .btn-quick-action:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-quick-send:hover {
+    color: var(--primary, #0d6efd);
+}
+
+.btn-quick-copy:hover {
+    color: var(--secondary, #6c757d);
+}
+
+.empty-quick-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-muted, #6c757d);
+
+    i {
+        margin-bottom: 16px;
+        opacity: 0.3;
+    }
+
+    p {
+        margin: 0;
+        font-size: 14px;
     }
 }
