@@ -242,7 +242,7 @@ patch(ChatroomApp.prototype, {
         this.notification.add(message, {type: notifType});
     },
 
-    async uploadFile(file, messageType) {
+    async uploadFile(file, messageType, isInternal = false) {
         const finalMessageType =
             messageType === "file"
                 ? file.type.startsWith("image/")
@@ -279,15 +279,22 @@ patch(ChatroomApp.prototype, {
                         attachment_id: attachmentId,
                         filename: file.name,
                         mime_type: file.type,
+                        is_internal: isInternal,
                     },
                 ]);
 
                 this.state.messageInput = "";
                 await this.loadMessages(this.state.currentRoom.id);
 
-                this.notification.add("Audio sent successfully", {
-                    type: "success",
-                });
+                if (isInternal) {
+                    this.notification.add("Audio saved as internal note", {
+                        type: "success",
+                    });
+                } else {
+                    this.notification.add("Audio sent successfully", {
+                        type: "success",
+                    });
+                }
 
                 setTimeout(() => {
                     this.scrollToBottom();
@@ -297,7 +304,7 @@ patch(ChatroomApp.prototype, {
                 this.notification.add("Failed to upload audio", {type: "danger"});
             }
         } else {
-            await super.uploadFile(file, messageType);
+            await super.uploadFile(file, messageType, isInternal);
         }
     },
 
