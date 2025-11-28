@@ -126,17 +126,20 @@ class ChatroomRoom(models.Model):
         if "assigned_to_id" in vals:
             for room in self:
                 if vals["assigned_to_id"]:
+                    if room.needs_attention:
+                        room.write({"needs_attention": False})
                     if room.ai_enabled:
                         room.action_disable_ai()
-
                 else:
                     if not room.ai_enabled and room.ai_agent_id:
                         room.action_enable_ai()
 
-        if "needs_attention" in vals and vals["needs_attention"]:
+        if "needs_attention" in vals:
             for room in self:
-                if not old_needs_attention.get(room.id):
+                if vals["needs_attention"] and not old_needs_attention.get(room.id):
                     room._notify_urgent_attention()
+                elif not vals["needs_attention"] and old_needs_attention.get(room.id):
+                    room._notify_room_updated()
 
         return result
 
@@ -210,6 +213,7 @@ class ChatroomRoom(models.Model):
                     {
                         "room_id": self.id,
                         "room_name": self.name,
+                        "needs_attention": self.needs_attention,
                     },
                 )
 
