@@ -1,0 +1,24 @@
+<odoo>
+    <menuitem
+        id="menu_chatroom_ai_optimization"
+        name="Prompt Optimization"
+        parent="chatroom_ai.menu_chatroom_ai"
+        sequence="50"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_optimizers"
+        name="Optimizers"
+        parent="menu_chatroom_ai_optimization"
+        action="action_chatroom_ai_prompt_optimizer"
+        sequence="10"
+    />
+
+    <menuitem
+        id="menu_chatroom_ai_optimization_runs"
+        name="Optimization History"
+        parent="menu_chatroom_ai_optimization"
+        action="action_chatroom_ai_optimization_run"
+        sequence="20"
+    />
+</odoo>

@@ -1,0 +1,21 @@
+<odoo>
+    <record id="view_chatroom_ai_agent_form_optimizer" model="ir.ui.view">
+        <field name="name">chatroom.ai.agent.form.optimizer</field>
+        <field name="model">chatroom.ai.agent</field>
+        <field name="inherit_id" ref="chatroom_ai.view_chatroom_ai_agent_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button
+                    name="action_setup_optimizer"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-magic"
+                >
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Setup Optimizer</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

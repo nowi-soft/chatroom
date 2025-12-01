@@ -1,0 +1,112 @@
+<odoo>
+    <record id="action_chatroom_ai_optimization_run" model="ir.actions.act_window">
+        <field name="name">Optimization Runs</field>
+        <field name="res_model">chatroom.ai.optimization.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_chatroom_ai_optimization_run_list" model="ir.ui.view">
+        <field name="name">chatroom.ai.optimization.run.list</field>
+        <field name="model">chatroom.ai.optimization.run</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="create_date" string="Run Date" />
+                <field name="agent_id" />
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-success="state == 'completed'"
+                    decoration-danger="state == 'failed'"
+                    decoration-info="state == 'running'"
+                />
+                <field name="conversations_tested" />
+                <field name="current_score" />
+                <field name="new_score" />
+                <field
+                    name="improvement"
+                    decoration-success="improvement &gt; 0"
+                    decoration-danger="improvement &lt; 0"
+                />
+                <field
+                    name="result"
+                    widget="badge"
+                    decoration-success="result == 'improved'"
+                    decoration-warning="result == 'no_improvement'"
+                />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_chatroom_ai_optimization_run_form" model="ir.ui.view">
+        <field name="name">chatroom.ai.optimization.run.form</field>
+        <field name="model">chatroom.ai.optimization.run</field>
+        <field name="arch" type="xml">
+            <form string="Optimization Run">
+                <header>
+                    <field name="state" widget="statusbar" />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            Optimization Run - <field name="create_date" readonly="1" />
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="basic">
+                            <field name="agent_id" />
+                            <field name="optimizer_id" />
+                            <field name="conversations_tested" />
+                        </group>
+                        <group name="scores">
+                            <field name="current_score" />
+                            <field name="new_score" />
+                            <field
+                                name="improvement"
+                                decoration-success="improvement &gt; 0"
+                                decoration-danger="improvement &lt; 0"
+                            />
+                            <field
+                                name="result"
+                                widget="badge"
+                                decoration-success="result == 'improved'"
+                                decoration-warning="result == 'no_improvement'"
+                            />
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Prompts" name="prompts">
+                            <separator string="Current Prompt (Before)" />
+                            <field name="current_prompt" nolabel="1" widget="text" />
+
+                            <separator string="Improved Prompt (After)" />
+                            <field name="improved_prompt" nolabel="1" widget="text" />
+
+                            <div class="oe_button_box mt-3">
+                                <button
+                                    name="action_apply_improved_prompt"
+                                    type="object"
+                                    string="Apply Improved Prompt to Agent"
+                                    class="btn-primary"
+                                    invisible="not improved_prompt or result == 'no_improvement'"
+                                />
+                            </div>
+                        </page>
+
+                        <page string="Analysis" name="analysis">
+                            <field name="analysis_notes" nolabel="1" widget="text" />
+                        </page>
+
+                        <page string="Test Scenarios" name="scenarios">
+                            <field name="test_scenarios" nolabel="1" widget="text" />
+                        </page>
+
+                        <page string="Error" name="error" invisible="not error_message">
+                            <field name="error_message" nolabel="1" widget="text" />
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

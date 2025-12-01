@@ -1,6 +1,9 @@
-"""OpenAI Provider Implementation"""
-
+import base64
 import logging
+import os
+import tempfile
+
+import openai
 
 from odoo import fields, models
 
@@ -20,8 +23,6 @@ class ChatroomAIProvider(models.Model):
             return super()._test_provider_connection()
 
         try:
-            import openai
-
             client = openai.OpenAI(
                 api_key=self.api_key,
                 base_url=self.api_base_url if self.api_base_url else None,
@@ -70,8 +71,6 @@ class ChatroomAIProvider(models.Model):
             )
 
         try:
-            import openai
-
             client = openai.OpenAI(
                 api_key=self.api_key,
                 base_url=self.api_base_url if self.api_base_url else None,
@@ -184,10 +183,6 @@ class ChatroomAIProvider(models.Model):
             )
 
         try:
-            import base64
-
-            import openai
-
             client = openai.OpenAI(
                 api_key=self.api_key,
                 base_url=self.api_base_url if self.api_base_url else None,
@@ -215,8 +210,6 @@ class ChatroomAIProvider(models.Model):
                     audio_bytes = audio_data
             else:
                 audio_bytes = audio_data
-
-            import tempfile
 
             extension = "ogg"
             if mime_type:
@@ -254,8 +247,6 @@ class ChatroomAIProvider(models.Model):
                 _logger.info("Transcription successful")
                 return response.text
             finally:
-                import os
-
                 if os.path.exists(temp_file_path):
                     os.unlink(temp_file_path)
 
