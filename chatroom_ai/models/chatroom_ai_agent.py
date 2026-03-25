@@ -221,11 +221,15 @@ Always maintain context from previous messages in the conversation.""",
                 tools=tools,
             )
 
-            if not result or not result.get("content"):
+            has_content = bool((result or {}).get("content"))
+            has_tool_calls = bool((result or {}).get("tool_calls"))
+
+            if not result or (not has_content and not has_tool_calls):
                 _logger.error(
                     f"AI response empty or invalid for room {room.name}. "
                     f"Result: {result}, "
-                    f"Has content: {bool(result.get('content') if result else False)}"
+                    f"Has content: {has_content}, "
+                    f"Has tool calls: {has_tool_calls}"
                 )
                 room.action_pause_ai_and_request_attention()
                 return
