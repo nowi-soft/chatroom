@@ -319,8 +319,10 @@ Always maintain context from previous messages in the conversation.""",
                 ),
             )
 
-            if isinstance(result, dict) and result.get("error"):
-                tool_note = self.env._("🤖 AI Tool Executed: %s ❌", tool.name)
+            if isinstance(result, dict) and (
+                result.get("error") or result.get("success") is False
+            ):
+                tool_note = self.env._("🤖 AI Tool Failed: %s ❌", tool.name)
             else:
                 tool_note = self.env._("🤖 AI Tool Executed: %s ✅", tool.name)
 
@@ -334,7 +336,9 @@ Always maintain context from previous messages in the conversation.""",
                 }
             )
 
-            self.sudo().total_tool_calls += 1
+            self.sudo().write(
+                {"total_tool_executions": self.total_tool_executions + 1}
+            )
 
             return result
 

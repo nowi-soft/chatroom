@@ -42,8 +42,11 @@
 }
 
 try:
+    room_id = room.id if room else False
+    agent_id = agent.id if agent else False
+
     # Get parameters
-    name = params.get('name')
+    name = params.get('name') or (room.display_name if room else False) or 'Lead from chat'
     contact_name = params.get('contact_name')
     email = params.get('email')
     phone = params.get('phone')
@@ -64,7 +67,6 @@ try:
         lead_vals['chatroom_room_ids'] = [(4, room_id)]
 
     # Link to partner if chat has linked contacts
-    room = env['chatroom.room'].browse(room_id)
     if room and room.partner_ids:
         lead_vals['partner_id'] = room.partner_ids[0].id
 
