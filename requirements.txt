@@ -2,7 +2,7 @@
 PyPDF2
 docx
 openai
-openpyxl
+openpyxl>=3.1.5
 pandas
 requests
 xlrd

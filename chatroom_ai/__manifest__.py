@@ -16,7 +16,7 @@
             "PyPDF2",
             "docx",
             "pandas",
-            "openpyxl",
+            "openpyxl>=3.1.5",
             "xlrd",
         ],
     },
