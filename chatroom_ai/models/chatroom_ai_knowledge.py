@@ -1,5 +1,10 @@
 import base64
+import io
 import logging
+
+import PyPDF2
+import docx
+import pandas as pd
 
 from odoo import api, fields, models
 
@@ -128,18 +133,14 @@ class ChatroomAIKnowledge(models.Model):
 
         if file_name.lower().endswith(".pdf"):
             try:
-                import io
-
-                import PyPDF2
-
                 pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_data))
                 text = ""
                 for page in pdf_reader.pages:
                     text += page.extract_text() + "\n"
                 return text.strip()
-            except ImportError:
-                _logger.warning("PyPDF2 not installed, cannot extract PDF")
-                return ""
+            except Exception as e:
+                _logger.error(f"Error extracting PDF: {str(e)}")
+                return f"Error processing PDF file: {str(e)}"
 
         elif file_name.lower().endswith((".txt", ".md", ".csv")):
             try:
@@ -149,22 +150,14 @@ class ChatroomAIKnowledge(models.Model):
 
         elif file_name.lower().endswith(".docx"):
             try:
-                import io
-
-                import docx
-
                 doc = docx.Document(io.BytesIO(file_data))
                 return "\n".join([para.text for para in doc.paragraphs])
-            except ImportError:
-                _logger.warning("python-docx not installed, cannot extract DOCX")
-                return ""
+            except Exception as e:
+                _logger.error(f"Error extracting DOCX: {str(e)}")
+                return f"Error processing DOCX file: {str(e)}"
 
         elif file_name.lower().endswith((".xls", ".xlsx")):
             try:
-                import io
-
-                import pandas as pd
-
                 df_dict = pd.read_excel(io.BytesIO(file_data), sheet_name=None)
 
                 text = ""
@@ -174,11 +167,6 @@ class ChatroomAIKnowledge(models.Model):
                     text += "\n\n"
 
                 return text.strip()
-            except ImportError:
-                _logger.warning(
-                    "pandas and openpyxl not installed, cannot extract Excel"
-                )
-                return "Install 'pandas' and 'openpyxl' to process Excel files"
             except Exception as e:
                 _logger.error(f"Error extracting Excel: {str(e)}")
                 return f"Error processing Excel file: {str(e)}"

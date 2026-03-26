@@ -11,6 +11,15 @@
         "queue_job",
         "web",
     ],
+    "external_dependencies": {
+        "python": [
+            "PyPDF2",
+            "docx",
+            "pandas",
+            "openpyxl",
+            "xlrd",
+        ],
+    },
     "data": [
         "security/chatroom_ai_security.xml",
         "security/ir.model.access.csv",
