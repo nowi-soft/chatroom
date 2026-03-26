@@ -336,9 +336,7 @@ Always maintain context from previous messages in the conversation.""",
                 }
             )
 
-            self.sudo().write(
-                {"total_tool_executions": self.total_tool_executions + 1}
-            )
+            self.sudo().write({"total_tool_executions": self.total_tool_executions + 1})
 
             return result
 

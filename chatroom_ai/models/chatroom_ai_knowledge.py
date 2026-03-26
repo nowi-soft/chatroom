@@ -2,9 +2,9 @@ import base64
 import io
 import logging
 
-import PyPDF2
 import docx
 import pandas as pd
+import PyPDF2
 
 from odoo import api, fields, models
 
