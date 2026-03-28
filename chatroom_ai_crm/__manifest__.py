@@ -12,6 +12,7 @@
     ],
     "data": [
         "data/chatroom_ai_tool_data.xml",
+        "data/chatroom_ai_tool_code_source_data.xml",
     ],
     "installable": True,
     "application": False,

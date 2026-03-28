@@ -1,8 +1,11 @@
 import json
 import logging
 
+from markupsafe import Markup
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import misc
 
 _logger = logging.getLogger(__name__)
 
@@ -43,6 +46,7 @@ class ChatroomAITool(models.Model):
     )
 
     python_code = fields.Text(
+        string="Implementation Code",
         help="""Python code to execute. Available variables:
 - env: Odoo environment
 - room: chatroom.room record
@@ -51,6 +55,24 @@ class ChatroomAITool(models.Model):
 - agent: chatroom.ai.agent record
 
 Must return a dict with result information.""",
+    )
+    python_code_source = fields.Text(
+        string="Module Source Code",
+        help=(
+            "Code distributed from module data. This is updateable by module "
+            "upgrades and acts as the reference source."
+        ),
+    )
+    python_code_diff_html = fields.Html(
+        string="Source vs Implementation Diff",
+        compute="_compute_python_code_diff_html",
+        sanitize=False,
+        readonly=True,
+    )
+    python_code_in_sync = fields.Boolean(
+        string="Implementation In Sync",
+        compute="_compute_python_code_diff_html",
+        readonly=True,
     )
 
     model_id = fields.Many2one("ir.model")
@@ -80,6 +102,73 @@ Must return a dict with result information.""",
                         "Code name must contain only letters, numbers, and underscores"
                     )
                 )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Keep backward compatibility: first install should still have executable
+        # implementation even if only module source is provided by data files.
+        for vals in vals_list:
+            source = vals.get("python_code_source")
+            if source and not vals.get("python_code"):
+                vals["python_code"] = source
+        return super().create(vals_list)
+
+    def write(self, vals):
+        has_source_update = "python_code_source" in vals
+        result = super().write(vals)
+
+        # During upgrades, never override tenant-custom implementation.
+        # But if implementation is empty, seed it from source automatically.
+        if has_source_update:
+            for tool in self:
+                if not tool.python_code and tool.python_code_source:
+                    super(ChatroomAITool, tool).write(
+                        {"python_code": tool.python_code_source}
+                    )
+
+        return result
+
+    @api.depends("python_code_source", "python_code")
+    def _compute_python_code_diff_html(self):
+        for tool in self:
+            source_text = tool.python_code_source or ""
+            implementation_text = tool.python_code or ""
+            tool.python_code_in_sync = source_text == implementation_text
+
+            if tool.python_code_in_sync:
+                tool.python_code_diff_html = Markup(
+                    "<p><strong>No differences.</strong> "
+                    "Implementation is identical to module source.</p>"
+                )
+                continue
+
+            table = misc.get_diff(
+                (source_text, "Module source"),
+                (implementation_text, "Implementation"),
+            )
+            tool.python_code_diff_html = Markup(table)
+
+    def action_copy_source_to_implementation(self):
+        self.ensure_one()
+        if self.implementation_type != "python":
+            raise UserError(self.env._("Copy is only available for Python tools."))
+
+        if not self.python_code_source:
+            raise UserError(self.env._("No module source code available to copy."))
+
+        self.write({"python_code": self.python_code_source})
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": self.env._("Source Copied"),
+                "message": self.env._(
+                    "Module source code has been copied to implementation."
+                ),
+                "type": "success",
+                "sticky": False,
+            },
+        }
 
     def get_tool_definition(self):
         self.ensure_one()
@@ -149,7 +238,8 @@ Must return a dict with result information.""",
             return {"error": str(e), "success": False}
 
     def _execute_python(self, room, params, conversation):
-        if not self.python_code:
+        code_to_execute = self.python_code or self.python_code_source
+        if not code_to_execute:
             raise UserError(self.env._("No Python code defined"))
 
         agent = conversation.agent_id
@@ -170,7 +260,7 @@ Must return a dict with result information.""",
             "_logger": _logger,
         }
 
-        exec(self.python_code, eval_context)
+        exec(code_to_execute, eval_context)
 
         return eval_context.get("result", {"success": True})
 
