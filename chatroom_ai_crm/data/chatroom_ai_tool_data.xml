@@ -124,6 +124,21 @@ try:
 
     connector_type = _clean(room.connector_id.connector_type if room and room.connector_id else False).lower()
 
+    # Resolve an internal user for CRM writes to avoid Public user ownership.
+    execution_user = False
+    if room and room.assigned_to_id and not room.assigned_to_id.share:
+        execution_user = room.assigned_to_id
+    elif agent and agent.create_uid and not agent.create_uid.share:
+        execution_user = agent.create_uid
+    else:
+        execution_user = env.ref('base.user_admin')
+
+    lead_model = env['crm.lead'].sudo().with_user(execution_user)
+    crm_use_lead = str(
+        env['ir.config_parameter'].sudo().get_param('crm.use_lead', 'False')
+    ).lower() in ('1', 'true', 'yes', 'y', 'on')
+    target_type = 'lead' if crm_use_lead else 'opportunity'
+
     # Only infer phone from room.external_id for channels where external_id is the phone (e.g. Evolution/WhatsApp).
     room_external_id = _clean(room.external_id if room else False)
     if not phone and connector_type in ('evolution',) and room_external_id:
@@ -137,20 +152,27 @@ try:
     if lead_temperature not in ('cold', 'warm', 'hot'):
         lead_temperature = ''
 
+    temperature_label_map = {
+        'cold': 'fría',
+        'warm': 'tibia',
+        'hot': 'caliente',
+    }
+
     def _build_note(base_description):
         parts = []
         if base_description:
             parts.append(base_description)
         if intent_signal:
-            parts.append(f"Intent signal: {intent_signal}")
+            parts.append(f"Señal de intención: {intent_signal}")
         if lead_temperature:
-            parts.append(f"Lead temperature: {lead_temperature}")
+            temp_label = temperature_label_map.get(lead_temperature, lead_temperature)
+            parts.append(f"Temperatura del lead: {temp_label}")
         if sentiment_summary:
-            parts.append(f"Sentiment: {sentiment_summary}")
+            parts.append(f"Sentimiento: {sentiment_summary}")
         if preferred_contact_time:
-            parts.append(f"Preferred contact time: {preferred_contact_time}")
+            parts.append(f"Horario preferido de contacto: {preferred_contact_time}")
         if next_action:
-            parts.append(f"Next action: {next_action}")
+            parts.append(f"Próxima acción: {next_action}")
         # crm.lead.description is HTML-friendly in many setups; use visible line breaks.
         return '&lt;br/&gt;'.join(parts).strip()
 
@@ -186,6 +208,8 @@ try:
     )
     has_contact_data = bool(contact_name or email or phone)
     has_detailed_need = len(description) >= 25
+    has_channel_reachability = bool(room_external_id and connector_type)
+    has_progress_signal = bool(intent_signal or next_action or preferred_contact_time)
 
     # Heuristic fallback for temperature if model did not send it.
     if not lead_temperature:
@@ -203,7 +227,22 @@ try:
         result['message'] = 'Lead skipped: temperature is cold.'
         raise ValueError(result['message'])
 
-    if not ((explicit_create and has_contact_data) or (has_contact_data and has_detailed_need)):
+    qualifies_for_creation = (
+        # Classic path: explicit commercial intent + contact data.
+        (explicit_create and has_contact_data)
+        # Conservative fallback: contact data + concrete need summary.
+        or (has_contact_data and has_detailed_need)
+        # Channel-based path (Telegram/WhatsApp/etc.): warm/hot with
+        # clear progression signal even when phone/email is not provided yet.
+        or (
+            lead_temperature in ('warm', 'hot')
+            and has_channel_reachability
+            and has_detailed_need
+            and has_progress_signal
+        )
+    )
+
+    if not qualifies_for_creation:
         result['success'] = False
         result['skipped'] = True
         result['message'] = (
@@ -221,7 +260,7 @@ try:
     }
 
     # Try to find a probable duplicate first.
-    duplicate_domain = [('type', '=', 'opportunity')]
+    duplicate_domain = [('type', 'in', ['lead', 'opportunity'])]
     if email:
         duplicate_domain.append(('email_from', '=', email))
     elif phone:
@@ -231,7 +270,7 @@ try:
     else:
         duplicate_domain.append(('name', 'ilike', name))
 
-    existing_lead = env['crm.lead'].search(duplicate_domain, limit=1, order='id desc')
+    existing_lead = lead_model.search(duplicate_domain, limit=1, order='id desc')
 
     if existing_lead:
         update_vals = {}
@@ -241,6 +280,11 @@ try:
             update_vals['email_from'] = email
         if phone and not existing_lead.phone:
             update_vals['phone'] = phone
+        if (
+            execution_user
+            and (not existing_lead.user_id or existing_lead.user_id.share)
+        ):
+            update_vals['user_id'] = execution_user.id
         if description:
             previous = existing_lead.description or ''
             if note_text and note_text not in previous:
@@ -275,8 +319,9 @@ try:
             'contact_name': contact_name or False,
             'email_from': email or False,
             'phone': phone or False,
+            'user_id': execution_user.id if execution_user else False,
             'description': note_text,
-            'type': 'opportunity',
+            'type': target_type,
             'probability': probability_by_temp.get(lead_temperature, 0.0),
             'priority': priority_by_temp.get(lead_temperature, '0'),
         }
@@ -289,10 +334,13 @@ try:
         if room and room.partner_ids:
             lead_vals['partner_id'] = room.partner_ids[0].id
 
-        lead = env['crm.lead'].create(lead_vals)
+        lead = lead_model.create(lead_vals)
         result['lead_id'] = lead.id
         result['created'] = True
-        result['message'] = f'Lead "{name}" created successfully (ID: {lead.id})'
+        lead_label = 'Lead' if target_type == 'lead' else 'Opportunity'
+        result['message'] = (
+            f'{lead_label} "{name}" created successfully (ID: {lead.id})'
+        )
 
     # Add message with creation info
     if room_id and agent_id:
@@ -305,11 +353,16 @@ try:
         &lt;p&gt;&lt;a href="{chat_url}" target="_blank"&gt;View source chat conversation&lt;/a&gt;&lt;/p&gt;
         '''
 
-        lead.message_post(
+        lead.with_user(execution_user).message_post(
             body=Markup(message_body),
             subject='Lead managed by AI',
             message_type='notification',
             subtype_xmlid='mail.mt_note',
+            author_id=(
+                execution_user.partner_id.id
+                if execution_user and execution_user.partner_id
+                else False
+            ),
         )
 
 except Exception as e:

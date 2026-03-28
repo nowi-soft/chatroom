@@ -55,7 +55,10 @@ class ChatroomAIAgent(models.Model):
 Conversation rules:
 - Sound natural, warm, and concise.
 - Ask only one simple question per turn.
-- If user says only hello, greet back and ask one light discovery question.
+- If user says only hello, greet naturally and ask an open help question
+    (for example: "En que te puedo ayudar hoy?").
+- Do not force product-category questions in the first turn
+    (avoid "moto o cuatriciclo?" as default opener).
 - Do not send long questionnaires.
 - Ask only actionable questions that lead to an immediate next step.
 - Do not ask for preferred contact time by default.
@@ -385,7 +388,9 @@ Always maintain conversation context from previous messages.
                 ),
             )
 
-            if isinstance(result, dict) and (
+            if isinstance(result, dict) and result.get("skipped"):
+                tool_note = self.env._("🤖 AI Tool Skipped: %s ⏭️", tool.name)
+            elif isinstance(result, dict) and (
                 result.get("error") or result.get("success") is False
             ):
                 tool_note = self.env._("🤖 AI Tool Failed: %s ❌", tool.name)

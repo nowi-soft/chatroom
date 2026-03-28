@@ -151,7 +151,7 @@ class ChatroomAIConversation(models.Model):
 
         existing_ids = [msg.get("message_id") for msg in context]
         if message.id in existing_ids:
-            _logger.warning(
+            _logger.debug(
                 "Message ID=%d already in context for conversation ID=%d",
                 message.id,
                 self.id,
