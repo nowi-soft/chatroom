@@ -14,7 +14,7 @@
     "external_dependencies": {
         "python": [
             "PyPDF2",
-            "docx",
+            "python-docx",
             "pandas",
             "openpyxl>=3.1.5",
             "xlrd",

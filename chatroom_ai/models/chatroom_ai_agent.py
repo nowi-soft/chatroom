@@ -49,9 +49,30 @@ class ChatroomAIAgent(models.Model):
 
     system_prompt = fields.Text(
         required=True,
-        default="""You are a helpful AI assistant managing customer conversations.
-Be professional, friendly, and concise in your responses.
-Always maintain context from previous messages in the conversation.""",
+        default="""You are a human-like sales assistant for a Honda dealership in Mendoza.
+
+Conversation rules:
+- Sound natural, warm, and concise.
+- Ask only one simple question per turn.
+- If user says only hello, greet back and ask one light discovery question.
+- Do not send long questionnaires.
+- Ask only actionable questions that lead to an immediate next step.
+- Do not ask for preferred contact time by default.
+- Only ask preferred contact time if the customer offers it or if a real handoff is blocked without it.
+- If channel metadata already identifies contact (e.g., WhatsApp), avoid asking phone again unless strictly required.
+- Do not mention AI, tools, internal processes, lead IDs, or backend actions.
+- Mentally classify lead temperature in each turn: cold, warm, hot.
+
+Sales flow:
+- Understand the need first, then recommend.
+- Mention financing/test ride only when relevant.
+- Use create_lead only with clear commercial intent.
+- Never create a lead when temperature is cold.
+- Create/update lead when warm/hot and there is actionable contact/progression data.
+- After creating/updating a lead, confirm briefly and close naturally without adding extra questions unless a critical contact datum is missing.
+
+Always maintain conversation context from previous messages.
+""",
         help="Core instructions that define the agent's behavior and personality",
     )
 
@@ -297,13 +318,50 @@ Always maintain context from previous messages in the conversation.""",
             tool_name = tool_call.get("name")
             tool_args = tool_call.get("arguments", {})
 
+        tool_call_id = tool_call.get("id")
+
+        if tool_call_id and conversation.has_tool_call_result(tool_call_id):
+            existing_result = conversation.get_tool_call_result(tool_call_id)
+            _logger.info(
+                "Skipping duplicate tool_call_id %s for tool %s in conversation %s",
+                tool_call_id,
+                tool_name,
+                conversation.id,
+            )
+            return existing_result
+
         if isinstance(tool_args, str):
-            tool_args = json.loads(tool_args)
+            try:
+                parsed_args = json.loads(tool_args)
+                if isinstance(parsed_args, dict):
+                    tool_args = parsed_args
+                else:
+                    _logger.warning(
+                        "Tool %s arguments parsed to non-dict (%s). Using empty args.",
+                        tool_name,
+                        type(parsed_args).__name__,
+                    )
+                    tool_args = {}
+            except (json.JSONDecodeError, ValueError) as e:
+                _logger.warning(
+                    "Invalid JSON arguments for tool %s. Using empty args. Raw: %s Error: %s",
+                    tool_name,
+                    tool_args,
+                    e,
+                )
+                tool_args = {}
+        elif not isinstance(tool_args, dict):
+            _logger.warning(
+                "Tool %s received non-dict arguments (%s). Using empty args.",
+                tool_name,
+                type(tool_args).__name__,
+            )
+            tool_args = {}
 
         tool = self.tool_ids.filtered(lambda t: t.code_name == tool_name)
         if not tool:
             _logger.warning(f"Tool {tool_name} not found for agent {self.name}")
-            return
+            return {"error": f"Tool {tool_name} not found"}
 
         try:
             result = tool.execute(conversation.room_id, tool_args, conversation)
@@ -336,7 +394,9 @@ Always maintain context from previous messages in the conversation.""",
                 }
             )
 
-            self.sudo().write({"total_tool_executions": self.total_tool_executions + 1})
+            self.sudo().write(
+                {"total_tool_executions": self.total_tool_executions + 1}
+            )
 
             return result
 

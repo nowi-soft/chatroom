@@ -98,7 +98,30 @@
                         </page>
 
                         <page string="Test Scenarios" name="scenarios">
-                            <field name="test_scenarios" nolabel="1" widget="text" />
+                            <field
+                                name="test_scenarios_pretty"
+                                nolabel="1"
+                                widget="text"
+                                readonly="1"
+                            />
+                        </page>
+
+                        <page string="Scenario Results" name="scenario_results">
+                            <separator string="Current Prompt Results" />
+                            <field
+                                name="current_results_summary"
+                                nolabel="1"
+                                widget="text"
+                                readonly="1"
+                            />
+
+                            <separator string="Best Prompt Results" />
+                            <field
+                                name="best_results_summary"
+                                nolabel="1"
+                                widget="text"
+                                readonly="1"
+                            />
                         </page>
 
                         <page string="Error" name="error" invisible="not error_message">

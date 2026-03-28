@@ -85,9 +85,30 @@ Must return a dict with result information.""",
         self.ensure_one()
 
         try:
-            parameters = json.loads(self.parameters_schema)
+            raw_schema = json.loads(self.parameters_schema)
         except (json.JSONDecodeError, ValueError):
-            parameters = {"type": "object", "properties": {}}
+            raw_schema = {}
+
+        if isinstance(raw_schema, dict) and isinstance(raw_schema.get("parameters"), dict):
+            parameters = raw_schema.get("parameters")
+        elif isinstance(raw_schema, dict):
+            parameters = raw_schema
+        else:
+            parameters = {}
+
+        if parameters.get("type") != "object":
+            _logger.warning(
+                "Tool %s has non-object schema type (%s). Forcing object schema.",
+                self.code_name,
+                parameters.get("type"),
+            )
+            parameters["type"] = "object"
+
+        if not isinstance(parameters.get("properties"), dict):
+            parameters["properties"] = {}
+
+        if not isinstance(parameters.get("required"), list):
+            parameters["required"] = []
 
         return {
             "name": self.code_name,

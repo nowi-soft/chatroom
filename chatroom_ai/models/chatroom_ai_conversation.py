@@ -50,14 +50,91 @@ class ChatroomAIConversation(models.Model):
     human_messages = fields.Integer(default=0)
     tool_executions = fields.Integer(default=0)
 
+    def _load_context(self):
+        self.ensure_one()
+        try:
+            return json.loads(self.context_messages) if self.context_messages else []
+        except (json.JSONDecodeError, ValueError) as e:
+            _logger.warning("Failed to parse conversation context: %s", e)
+            return []
+
+    def has_tool_call_result(self, tool_call_id):
+        self.ensure_one()
+        if not tool_call_id:
+            return False
+
+        context = self._load_context()
+        for msg in context:
+            if msg.get("role") == "tool" and msg.get("tool_call_id") == tool_call_id:
+                return True
+        return False
+
+    def get_tool_call_result(self, tool_call_id):
+        self.ensure_one()
+        if not tool_call_id:
+            return None
+
+        context = self._load_context()
+        for msg in context:
+            if msg.get("role") == "tool" and msg.get("tool_call_id") == tool_call_id:
+                raw_content = msg.get("content")
+                if isinstance(raw_content, dict):
+                    return raw_content
+                if isinstance(raw_content, str):
+                    try:
+                        return json.loads(raw_content)
+                    except (json.JSONDecodeError, ValueError):
+                        return {"raw": raw_content}
+                return raw_content
+        return None
+
+    def _build_channel_context_block(self):
+        self.ensure_one()
+
+        room = self.room_id
+        connector = room.connector_id
+        connector_type = (connector.connector_type or "unknown").lower() if connector else "unknown"
+        external_id = room.external_id or ""
+
+        lines = ["=== CHANNEL CONTEXT ==="]
+        lines.append(f"- Connector type: {connector_type}")
+        if external_id:
+            lines.append(f"- Channel external_id: {external_id}")
+
+        # Channel-specific guidance to avoid redundant questions.
+        if connector_type == "evolution":
+            lines.append(
+                "- External ID usually maps to WhatsApp phone. Avoid asking phone again unless strictly required."
+            )
+            lines.append("- If needed, confirm contact data briefly instead of re-collecting from scratch.")
+        elif connector_type == "telegram":
+            lines.append(
+                "- External ID is Telegram chat/user ID, not a guaranteed phone number."
+            )
+            lines.append(
+                "- Ask for phone only if truly necessary for the next business action."
+            )
+        else:
+            lines.append(
+                "- Do not assume external_id is a phone number; validate contact data only when needed."
+            )
+
+        partner_names = []
+        if hasattr(room, "partner_ids") and room.partner_ids:
+            partner_names = [p.name for p in room.partner_ids if p.name]
+        if partner_names:
+            lines.append(f"- Linked contacts in Odoo: {', '.join(partner_names)}")
+
+        lines.append(
+            "- Keep questions minimal and action-oriented; avoid repeating data already available in metadata."
+        )
+
+        return "\n".join(lines)
+
     def add_message(self, message):
         self.ensure_one()
 
-        try:
-            context = json.loads(self.context_messages) if self.context_messages else []
-        except (json.JSONDecodeError, ValueError) as e:
-            _logger.warning(f"Failed to parse conversation context: {e}")
-            context = []
+        context = self._load_context()
 
         role = "assistant" if message.direction == "outgoing" else "user"
 
@@ -118,7 +195,14 @@ class ChatroomAIConversation(models.Model):
 
 """
 
-        system_content = temporal_instructions + self.agent_id.system_prompt
+        channel_context = self._build_channel_context_block()
+
+        system_content = (
+            temporal_instructions
+            + channel_context
+            + "\n\n"
+            + self.agent_id.system_prompt
+        )
 
         if self.agent_id.knowledge_ids:
             knowledge_content = "\n\n=== KNOWLEDGE BASE ===\n\n"
@@ -137,7 +221,7 @@ class ChatroomAIConversation(models.Model):
         )
 
         try:
-            context = json.loads(self.context_messages) if self.context_messages else []
+            context = self._load_context()
             for msg in context:
                 content = msg.get("content", "")
 
@@ -171,10 +255,7 @@ class ChatroomAIConversation(models.Model):
     def add_assistant_message_with_tools(self, content, tool_calls):
         self.ensure_one()
 
-        try:
-            context = json.loads(self.context_messages) if self.context_messages else []
-        except (json.JSONDecodeError, ValueError):
-            context = []
+        context = self._load_context()
 
         assistant_msg = {
             "role": "assistant",
@@ -196,24 +277,34 @@ class ChatroomAIConversation(models.Model):
     def add_tool_results(self, tool_results):
         self.ensure_one()
 
-        try:
-            context = json.loads(self.context_messages) if self.context_messages else []
-        except (json.JSONDecodeError, ValueError):
-            context = []
+        context = self._load_context()
+        existing_tool_ids = {
+            msg.get("tool_call_id")
+            for msg in context
+            if msg.get("role") == "tool" and msg.get("tool_call_id")
+        }
+
+        added = 0
 
         for tool_result in tool_results:
+            tool_call_id = tool_result.get("id", "call_" + str(len(context)))
+            if tool_call_id in existing_tool_ids:
+                continue
+
             context.append(
                 {
                     "role": "tool",
-                    "tool_call_id": tool_result.get("id", "call_" + str(len(context))),
+                    "tool_call_id": tool_call_id,
                     "content": json.dumps(tool_result.get("result", {})),
                 }
             )
+            existing_tool_ids.add(tool_call_id)
+            added += 1
 
         self.write(
             {
                 "context_messages": json.dumps(context),
-                "tool_executions": self.tool_executions + len(tool_results),
+                "tool_executions": self.tool_executions + added,
             }
         )
 

@@ -1,6 +1,6 @@
 <odoo>
     <record id="channel_ai" model="queue.job.channel">
-        <field name="name">root.ai</field>
+        <field name="name">ai</field>
         <field name="parent_id" ref="queue_job.channel_root" />
     </record>
 

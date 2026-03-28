@@ -4,10 +4,31 @@
         <field name="code_name">create_lead</field>
         <field
             name="description"
-        >Create a new lead/opportunity in the CRM system when a potential customer shows interest. Use this when the conversation indicates sales potential.</field>
+        >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data.</field>
+                <field name="example_usage">[
+    {
+        "when": "WhatsApp prospect asks for financing and wants follow-up call",
+        "call": {
+            "name": "create_lead",
+            "arguments": {
+                "name": "Interesado en Yamaha FZ - financiacion",
+                "contact_name": "Martin",
+                "description": "Cliente quiere financiacion para Yamaha FZ y pide avanzar hoy.",
+                "intent_signal": "Pidio avanzar con propuesta de financiacion",
+                "lead_temperature": "hot",
+                "sentiment_summary": "Motivado, listo para avanzar",
+                "next_action": "Enviar propuesta y llamar en el dia"
+            }
+        }
+    },
+    {
+        "when": "Telegram user only asks general info and no follow-up intent",
+        "call": "Do not call create_lead yet"
+    }
+]</field>
         <field name="parameters_schema">{
     "name": "create_lead",
-    "description": "Create a new lead/opportunity in CRM",
+    "description": "Create or update a qualified lead/opportunity in CRM",
     "parameters": {
         "type": "object",
         "properties": {
@@ -25,11 +46,31 @@
             },
             "phone": {
                 "type": "string",
-                "description": "Phone number"
+                "description": "Phone number (optional if channel metadata already provides contact)"
             },
             "description": {
                 "type": "string",
-                "description": "Additional notes or requirements"
+                "description": "Conversation summary and customer need"
+            },
+            "intent_signal": {
+                "type": "string",
+                "description": "Short reason why this is commercially qualified"
+            },
+            "lead_temperature": {
+                "type": "string",
+                "description": "Lead temperature: cold, warm, or hot"
+            },
+            "sentiment_summary": {
+                "type": "string",
+                "description": "Short customer sentiment summary"
+            },
+            "preferred_contact_time": {
+                "type": "string",
+                "description": "Best time window to contact the customer"
+            },
+            "next_action": {
+                "type": "string",
+                "description": "Next commercial action agreed with customer"
             }
         },
         "required": ["name"]
@@ -38,64 +79,243 @@
         <field name="python_code">result = {
     'success': True,
     'lead_id': False,
-    'message': ''
+    'message': '',
+    'created': False,
+    'updated': False,
+    'skipped': False,
 }
 
 try:
+    from markupsafe import Markup
+    import re
+
     room_id = room.id if room else False
     agent_id = agent.id if agent else False
 
-    # Get parameters
-    name = params.get('name') or (room.display_name if room else False) or 'Lead from chat'
-    contact_name = params.get('contact_name')
-    email = params.get('email')
-    phone = params.get('phone')
-    description = params.get('description', '')
+    def _clean(value):
+        if value is None:
+            return ''
+        return str(value).strip()
 
-    # Create lead
-    lead_vals = {
-        'name': name,
-        'contact_name': contact_name,
-        'email_from': email,
-        'phone': phone,
-        'description': description,
-        'type': 'opportunity',
+    def _normalize_plain_text(value):
+        text = _clean(value)
+        if not text:
+            return ''
+
+        # Some providers send HTML snippets; normalize to plain text blocks.
+        text = re.sub(r'&lt;br\s*/?&gt;', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'&lt;/p\s*&gt;', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'&lt;p[^&gt;]*&gt;', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'&lt;[^&gt;]+&gt;', '', text)
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        return '\n'.join(lines)
+
+    # Get parameters
+    name = _clean(params.get('name')) or (room.display_name if room else False) or 'Lead from chat'
+    contact_name = _clean(params.get('contact_name'))
+    email = _clean(params.get('email')).lower()
+    phone = _clean(params.get('phone'))
+    description = _normalize_plain_text(params.get('description'))
+    intent_signal = _normalize_plain_text(params.get('intent_signal'))
+    lead_temperature = _clean(params.get('lead_temperature')).lower()
+    sentiment_summary = _normalize_plain_text(params.get('sentiment_summary'))
+    preferred_contact_time = _normalize_plain_text(params.get('preferred_contact_time'))
+    next_action = _normalize_plain_text(params.get('next_action'))
+
+    connector_type = _clean(room.connector_id.connector_type if room and room.connector_id else False).lower()
+
+    # Only infer phone from room.external_id for channels where external_id is the phone (e.g. Evolution/WhatsApp).
+    room_external_id = _clean(room.external_id if room else False)
+    if not phone and connector_type in ('evolution',) and room_external_id:
+        normalized_room_phone = ''.join(
+            c for c in room_external_id if c.isdigit() or c == '+'
+        )
+        digits_count = sum(1 for c in normalized_room_phone if c.isdigit())
+        if digits_count >= 8:
+            phone = normalized_room_phone
+
+    if lead_temperature not in ('cold', 'warm', 'hot'):
+        lead_temperature = ''
+
+    def _build_note(base_description):
+        parts = []
+        if base_description:
+            parts.append(base_description)
+        if intent_signal:
+            parts.append(f"Intent signal: {intent_signal}")
+        if lead_temperature:
+            parts.append(f"Lead temperature: {lead_temperature}")
+        if sentiment_summary:
+            parts.append(f"Sentiment: {sentiment_summary}")
+        if preferred_contact_time:
+            parts.append(f"Preferred contact time: {preferred_contact_time}")
+        if next_action:
+            parts.append(f"Next action: {next_action}")
+        # crm.lead.description is HTML-friendly in many setups; use visible line breaks.
+        return '&lt;br/&gt;'.join(parts).strip()
+
+    note_text = _build_note(description)
+
+    # Qualification guardrails: skip creation for weak/early intent.
+    joined_text = ' '.join([
+        name,
+        description,
+        intent_signal,
+        next_action,
+        sentiment_summary,
+    ]).lower()
+    explicit_create = any(
+        token in joined_text
+        for token in [
+            'crear lead',
+            'create lead',
+            'contactame',
+            'contáctame',
+            'llamame',
+            'llámame',
+            'cotizacion',
+            'cotización',
+            'financiacion',
+            'financiación',
+            'test ride',
+            'prueba de manejo',
+            'comprar',
+            'señar',
+            'reserva',
+        ]
+    )
+    has_contact_data = bool(contact_name or email or phone)
+    has_detailed_need = len(description) >= 25
+
+    # Heuristic fallback for temperature if model did not send it.
+    if not lead_temperature:
+        if explicit_create and has_contact_data:
+            lead_temperature = 'hot'
+        elif has_contact_data and has_detailed_need:
+            lead_temperature = 'warm'
+        else:
+            lead_temperature = 'cold'
+
+    # Never create cold leads.
+    if lead_temperature == 'cold':
+        result['success'] = False
+        result['skipped'] = True
+        result['message'] = 'Lead skipped: temperature is cold.'
+        raise ValueError(result['message'])
+
+    if not ((explicit_create and has_contact_data) or (has_contact_data and has_detailed_need)):
+        result['success'] = False
+        result['skipped'] = True
+        result['message'] = (
+            'Lead skipped: insufficient qualification for warm/hot lead.'
+        )
+        raise ValueError(result['message'])
+
+    probability_by_temp = {
+        'warm': 40.0,
+        'hot': 70.0,
+    }
+    priority_by_temp = {
+        'warm': '1',
+        'hot': '2',
     }
 
-    # Link to chat room if available
-    if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
-        lead_vals['chatroom_room_ids'] = [(4, room_id)]
+    # Try to find a probable duplicate first.
+    duplicate_domain = [('type', '=', 'opportunity')]
+    if email:
+        duplicate_domain.append(('email_from', '=', email))
+    elif phone:
+        duplicate_domain.append(('phone', '=', phone))
+    elif contact_name:
+        duplicate_domain.append(('contact_name', 'ilike', contact_name))
+    else:
+        duplicate_domain.append(('name', 'ilike', name))
 
-    # Link to partner if chat has linked contacts
-    if room and room.partner_ids:
-        lead_vals['partner_id'] = room.partner_ids[0].id
+    existing_lead = env['crm.lead'].search(duplicate_domain, limit=1, order='id desc')
 
-    lead = env['crm.lead'].create(lead_vals)
+    if existing_lead:
+        update_vals = {}
+        if contact_name and not existing_lead.contact_name:
+            update_vals['contact_name'] = contact_name
+        if email and not existing_lead.email_from:
+            update_vals['email_from'] = email
+        if phone and not existing_lead.phone:
+            update_vals['phone'] = phone
+        if description:
+            previous = existing_lead.description or ''
+            if note_text and note_text not in previous:
+                update_vals['description'] = (
+                    f"{previous}\n\n[AI update]\n{note_text}".strip()
+                )
+
+        if update_vals:
+            existing_lead.write(update_vals)
+
+        # Upgrade commercial priority based on latest temperature.
+        current_probability = existing_lead.probability or 0.0
+        target_probability = probability_by_temp.get(lead_temperature, current_probability)
+        if target_probability > current_probability:
+            existing_lead.write({'probability': target_probability})
+
+        target_priority = priority_by_temp.get(lead_temperature)
+        if target_priority and (existing_lead.priority or '0') < target_priority:
+            existing_lead.write({'priority': target_priority})
+
+        if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
+            existing_lead.write({'chatroom_room_ids': [(4, room_id)]})
+
+        result['lead_id'] = existing_lead.id
+        result['updated'] = True
+        result['message'] = f'Existing lead updated (ID: {existing_lead.id})'
+        lead = existing_lead
+    else:
+        # Create lead
+        lead_vals = {
+            'name': name,
+            'contact_name': contact_name or False,
+            'email_from': email or False,
+            'phone': phone or False,
+            'description': note_text,
+            'type': 'opportunity',
+            'probability': probability_by_temp.get(lead_temperature, 0.0),
+            'priority': priority_by_temp.get(lead_temperature, '0'),
+        }
+
+        # Link to chat room if available
+        if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
+            lead_vals['chatroom_room_ids'] = [(4, room_id)]
+
+        # Link to partner if chat has linked contacts
+        if room and room.partner_ids:
+            lead_vals['partner_id'] = room.partner_ids[0].id
+
+        lead = env['crm.lead'].create(lead_vals)
+        result['lead_id'] = lead.id
+        result['created'] = True
+        result['message'] = f'Lead "{name}" created successfully (ID: {lead.id})'
 
     # Add message with creation info
     if room_id and agent_id:
         agent = env['chatroom.ai.agent'].browse(agent_id)
-        base_url = env['ir.config_parameter'].sudo().get_param('web.base.url')
-        chat_url = f"{base_url}/web#action=chatroom.action_chatroom_app&amp;room_id={room_id}"
+        chat_url = f"/web#action=chatroom.action_chatroom_app&amp;room_id={room_id}"
+        action_txt = 'created' if result['created'] else 'updated'
 
         message_body = f'''
-        &lt;p&gt;This lead was automatically created by AI agent &lt;strong&gt;{agent.name}&lt;/strong&gt; from a chat conversation.&lt;/p&gt;
+        &lt;p&gt;This lead was automatically {action_txt} by AI agent &lt;strong&gt;{agent.name}&lt;/strong&gt; from a chat conversation.&lt;/p&gt;
         &lt;p&gt;&lt;a href="{chat_url}" target="_blank"&gt;View source chat conversation&lt;/a&gt;&lt;/p&gt;
         '''
 
         lead.message_post(
-            body=message_body,
-            subject='Lead created by AI',
+            body=Markup(message_body),
+            subject='Lead managed by AI',
             message_type='notification',
             subtype_xmlid='mail.mt_note',
         )
 
-    result['lead_id'] = lead.id
-    result['message'] = f'Lead "{name}" created successfully (ID: {lead.id})'
-
 except Exception as e:
-    result['success'] = False
-    result['message'] = f'Error creating lead: {str(e)}'</field>
+    if not result.get('skipped'):
+        result['success'] = False
+        result['message'] = f'Error creating/updating lead: {str(e)}'</field>
         <field name="active">True</field>
     </record>
 </odoo>

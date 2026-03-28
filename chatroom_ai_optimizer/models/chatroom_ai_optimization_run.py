@@ -1,4 +1,6 @@
-from odoo import fields, models
+import json
+
+from odoo import api, fields, models
 
 
 class ChatroomAIOptimizationRun(models.Model):
@@ -37,6 +39,21 @@ class ChatroomAIOptimizationRun(models.Model):
     test_scenarios = fields.Text(
         string="Test Scenarios (JSON)",
         help="The scenarios used for testing",
+    )
+    test_scenarios_pretty = fields.Text(
+        string="Test Scenarios",
+        compute="_compute_results_summaries",
+        readonly=True,
+    )
+    current_results_summary = fields.Text(
+        string="Current Results Summary",
+        compute="_compute_results_summaries",
+        readonly=True,
+    )
+    best_results_summary = fields.Text(
+        string="Best Results Summary",
+        compute="_compute_results_summaries",
+        readonly=True,
     )
     conversations_tested = fields.Integer(
         readonly=True,
@@ -78,6 +95,64 @@ class ChatroomAIOptimizationRun(models.Model):
     )
 
     error_message = fields.Text()
+
+    @api.depends("test_scenarios")
+    def _compute_results_summaries(self):
+        def _format_scenarios(scenarios):
+            cleaned = [str(s).strip() for s in (scenarios or []) if str(s).strip()]
+            if not cleaned:
+                return "No scenarios available"
+            return "\n".join(
+                f"{idx}. {scenario}" for idx, scenario in enumerate(cleaned, 1)
+            )
+
+        def _format_items(items):
+            lines = []
+            for idx, item in enumerate(items or [], 1):
+                scenario_number = item.get("scenario_number") or idx
+                scenario_text = (item.get("scenario") or "").strip()
+                quality = item.get("quality_score")
+                turns = item.get("turns_completed")
+                helpful = item.get("helpful")
+                appropriate = item.get("appropriate")
+                notes = (item.get("notes") or "").strip()
+
+                lines.append(f"Scenario {scenario_number}")
+                if scenario_text:
+                    lines.append(f"- Prompt: {scenario_text}")
+                lines.append(f"- Quality: {quality}")
+                lines.append(f"- Turns completed: {turns}")
+                lines.append(f"- Helpful: {helpful} | Appropriate: {appropriate}")
+                if notes:
+                    lines.append(f"- Notes: {notes}")
+                lines.append("")
+
+            return "\n".join(lines).strip() or "No scenario results available"
+
+        for run in self:
+            run.test_scenarios_pretty = "No scenarios available"
+            run.current_results_summary = "No scenario results available"
+            run.best_results_summary = "No scenario results available"
+
+            if not run.test_scenarios:
+                continue
+
+            try:
+                payload = json.loads(run.test_scenarios)
+            except Exception:
+                raw = (run.test_scenarios or "").strip()
+                if raw:
+                    run.test_scenarios_pretty = raw
+                continue
+
+            if isinstance(payload, dict):
+                run.test_scenarios_pretty = _format_scenarios(payload.get("scenarios"))
+                run.current_results_summary = _format_items(
+                    payload.get("current_results")
+                )
+                run.best_results_summary = _format_items(payload.get("best_results"))
+            elif isinstance(payload, list):
+                run.test_scenarios_pretty = _format_scenarios(payload)
 
     def action_apply_improved_prompt(self):
         self.ensure_one()
