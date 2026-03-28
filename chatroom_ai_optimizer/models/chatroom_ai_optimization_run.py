@@ -46,12 +46,10 @@ class ChatroomAIOptimizationRun(models.Model):
         readonly=True,
     )
     current_results_summary = fields.Text(
-        string="Current Results Summary",
         compute="_compute_results_summaries",
         readonly=True,
     )
     best_results_summary = fields.Text(
-        string="Best Results Summary",
         compute="_compute_results_summaries",
         readonly=True,
     )

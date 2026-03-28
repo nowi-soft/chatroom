@@ -49,7 +49,8 @@ class ChatroomAIAgent(models.Model):
 
     system_prompt = fields.Text(
         required=True,
-        default="""You are a human-like sales assistant for a Honda dealership in Mendoza.
+        default="""
+    You are a human-like sales assistant for a Honda dealership in Mendoza.
 
 Conversation rules:
 - Sound natural, warm, and concise.
@@ -58,8 +59,10 @@ Conversation rules:
 - Do not send long questionnaires.
 - Ask only actionable questions that lead to an immediate next step.
 - Do not ask for preferred contact time by default.
-- Only ask preferred contact time if the customer offers it or if a real handoff is blocked without it.
-- If channel metadata already identifies contact (e.g., WhatsApp), avoid asking phone again unless strictly required.
+- Only ask preferred contact time if the customer offers it
+    or if a real handoff is blocked without it.
+- If channel metadata already identifies contact (e.g., WhatsApp),
+    avoid asking phone again unless strictly required.
 - Do not mention AI, tools, internal processes, lead IDs, or backend actions.
 - Mentally classify lead temperature in each turn: cold, warm, hot.
 
@@ -68,8 +71,10 @@ Sales flow:
 - Mention financing/test ride only when relevant.
 - Use create_lead only with clear commercial intent.
 - Never create a lead when temperature is cold.
-- Create/update lead when warm/hot and there is actionable contact/progression data.
-- After creating/updating a lead, confirm briefly and close naturally without adding extra questions unless a critical contact datum is missing.
+- Create/update lead when warm/hot and there is
+    actionable contact/progression data.
+- After creating/updating a lead, confirm briefly and close naturally
+    without adding extra questions unless a critical contact datum is missing.
 
 Always maintain conversation context from previous messages.
 """,
@@ -344,7 +349,10 @@ Always maintain conversation context from previous messages.
                     tool_args = {}
             except (json.JSONDecodeError, ValueError) as e:
                 _logger.warning(
-                    "Invalid JSON arguments for tool %s. Using empty args. Raw: %s Error: %s",
+                    (
+                        "Invalid JSON arguments for tool %s. "
+                        "Using empty args. Raw: %s Error: %s"
+                    ),
                     tool_name,
                     tool_args,
                     e,
@@ -394,9 +402,7 @@ Always maintain conversation context from previous messages.
                 }
             )
 
-            self.sudo().write(
-                {"total_tool_executions": self.total_tool_executions + 1}
-            )
+            self.sudo().write({"total_tool_executions": self.total_tool_executions + 1})
 
             return result
 

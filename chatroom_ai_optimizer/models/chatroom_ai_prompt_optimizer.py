@@ -1,7 +1,10 @@
 import json
+import logging
 import re
 
 from odoo import fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class ChatroomAIPromptOptimizer(models.Model):
@@ -93,14 +96,35 @@ class ChatroomAIPromptOptimizer(models.Model):
 
     def _default_scenarios(self):
         return [
-            "Hola, quiero saber precio y disponibilidad de la Honda XR150L para esta semana.",
-            "Estoy enojado porque no me respondieron ayer; necesito confirmar stock hoy mismo.",
-            "Quiero financiar una Wave 110S, ¿qué anticipo piden y en cuántas cuotas puedo pagar?",
-            "Estoy entre una XR150L y una GLH150, ¿cuál me conviene para delivery intenso?",
+            (
+                "Hola, quiero saber precio y disponibilidad de la "
+                "Honda XR150L para esta semana."
+            ),
+            (
+                "Estoy enojado porque no me respondieron ayer; "
+                "necesito confirmar stock hoy mismo."
+            ),
+            (
+                "Quiero financiar una Wave 110S, ¿qué anticipo piden "
+                "y en cuántas cuotas puedo pagar?"
+            ),
+            (
+                "Estoy entre una XR150L y una GLH150, "
+                "¿cuál me conviene para delivery intenso?"
+            ),
             "Necesito test ride el sábado y, si me cierra, señar en el momento.",
-            "Solo quería consultar colores disponibles de la Navi, todavía no decido compra.",
-            "Tengo presupuesto ajustado: ¿qué opción usada o plan de financiación recomiendan?",
-            "Me confirmaron interés en compra este mes, ¿pueden llamarme hoy por la tarde?",
+            (
+                "Solo quería consultar colores disponibles de la Navi, "
+                "todavía no decido compra."
+            ),
+            (
+                "Tengo presupuesto ajustado: ¿qué opción usada "
+                "o plan de financiación recomiendan?"
+            ),
+            (
+                "Me confirmaron interés en compra este mes, "
+                "¿pueden llamarme hoy por la tarde?"
+            ),
             "Necesito un cuatriciclo para trabajo rural urgente este fin de semana.",
             "¿Hacen toma de usados? Tengo una moto para entregar en parte de pago.",
         ]
@@ -170,7 +194,9 @@ class ChatroomAIPromptOptimizer(models.Model):
             "quality_score": round(score, 2),
             "appropriate": True,
             "helpful": bool(text),
-            "notes": "Heuristic fallback used: evaluator returned non-parseable output.",
+            "notes": (
+                "Heuristic fallback used: evaluator returned non-parseable output."
+            ),
         }
 
     def action_generate_test_scenarios(self):
@@ -337,7 +363,9 @@ class ChatroomAIPromptOptimizer(models.Model):
                 original_prompt, best_prompt
             )
 
-            attempts_summary = f"\n\n=== OPTIMIZATION ATTEMPTS: {len(attempts_history)} ===\n"
+            attempts_summary = (
+                f"\n\n=== OPTIMIZATION ATTEMPTS: {len(attempts_history)} ===\n"
+            )
             for i, hist in enumerate(attempts_history, 1):
                 status = hist.get("status", "rejected").upper()
                 attempts_summary += (
@@ -410,7 +438,7 @@ class ChatroomAIPromptOptimizer(models.Model):
             )
             raise
 
-    def _generate_test_scenarios(self):
+    def _generate_test_scenarios(self):  # noqa: C901
         self.ensure_one()
 
         if self.test_scenario_prompts:
@@ -688,7 +716,9 @@ Rules:
 
         try:
             provider_max_tokens = getattr(self.agent_id.provider_id, "max_tokens", None)
-            max_tokens_to_use = min(provider_max_tokens, 250) if provider_max_tokens else 120
+            max_tokens_to_use = (
+                min(provider_max_tokens, 250) if provider_max_tokens else 120
+            )
 
             result = self.agent_id.provider_id.generate_completion(
                 messages=[
@@ -709,12 +739,18 @@ Rules:
             if followup:
                 return followup
 
-        except Exception:
-            pass
+        except Exception as error:
+            _logger.debug("Follow-up generation failed: %s", error)
 
         fallback_turns = {
-            1: "Perfecto, estoy en Mendoza y quiero resolverlo hoy. Si te sirve me contactan por WhatsApp.",
-            2: "Dale, si hay stock avanzo. Tambien quiero saber opciones de financiacion.",
+            1: (
+                "Perfecto, estoy en Mendoza y quiero resolverlo hoy. "
+                "Si te sirve me contactan por WhatsApp."
+            ),
+            2: (
+                "Dale, si hay stock avanzo. "
+                "Tambien quiero saber opciones de financiacion."
+            ),
         }
         return fallback_turns.get(turn_number, "Gracias, quedo atento.")
 
@@ -742,8 +778,10 @@ Rules:
             "IMPORTANT:\n"
             "- Always give a score between 1 and 10\n"
             "- Be strict about conversation continuity and goal progression\n"
-            "- Penalize if the agent ignores context, asks redundant questions, or misses clear next steps\n"
-            "- Reward if the agent advances naturally toward qualification and resolution\n\n"
+            "- Penalize if the agent ignores context, asks redundant questions, "
+            "or misses clear next steps\n"
+            "- Reward if the agent advances naturally toward qualification "
+            "and resolution\n\n"
             "Return ONLY valid JSON with this exact format:\n"
             "{\n"
             '  "quality_score": 7.5,\n'

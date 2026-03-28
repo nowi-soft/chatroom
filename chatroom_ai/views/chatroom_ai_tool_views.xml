@@ -116,46 +116,75 @@
                         </page>
 
                         <page string="Help" name="help">
-                            <div class="o_chatroom_ai_tool_help" style="max-width: 980px; padding: 8px 0;">
-                                <div class="alert alert-info" role="alert" style="margin-bottom: 16px;">
+                            <div
+                                class="o_chatroom_ai_tool_help"
+                                style="max-width: 980px; padding: 8px 0;"
+                            >
+                                <div
+                                    class="alert alert-info"
+                                    role="alert"
+                                    style="margin-bottom: 16px;"
+                                >
                                     Use this page as a quick reference when writing Python tools.
                                 </div>
 
                                 <h3 style="margin: 0 0 8px 0;">Execution Context</h3>
                                 <p style="margin: 0 0 10px 0;">
-                                    These variables are already available in <b>python_code</b>:
-                                    <b>env</b>, <b>room</b>, <b>params</b>, <b>conversation</b>, <b>agent</b>,
-                                    <b>json</b>, <b>fields</b>, <b>UserError</b>, <b>_logger</b>.
+                                    These variables are already available in <b
+                                >python_code</b>:
+                                    <b>env</b>, <b>room</b>, <b>params</b>, <b
+                                >conversation</b>, <b>agent</b>,
+                                    <b>json</b>, <b>fields</b>, <b>UserError</b>, <b
+                                >_logger</b>.
                                 </p>
-                                <p style="margin: 0 0 16px 0;">Return values using a variable named <b>result</b> (dict preferred).</p>
+                                <p
+                                    style="margin: 0 0 16px 0;"
+                                >Return values using a variable named <b
+                                >result</b> (dict preferred).</p>
 
-                                <h3 style="margin: 0 0 8px 0;">Imports and Libraries</h3>
+                                <h3
+                                    style="margin: 0 0 8px 0;"
+                                >Imports and Libraries</h3>
                                 <p style="margin: 0 0 10px 0;">
                                     You can import Python modules available in the Odoo server environment.
                                     If a module is not installed, the tool will fail with ImportError.
                                 </p>
                                 <p style="margin: 0 0 16px 0;">
-                                    Useful imports: <b>from markupsafe import Markup</b>, <b>import json</b>,
-                                    <b>import re</b>, <b>from datetime import datetime</b>,
+                                    Useful imports: <b
+                                >from markupsafe import Markup</b>, <b>import json</b>,
+                                    <b>import re</b>, <b
+                                >from datetime import datetime</b>,
                                     <b>from odoo.exceptions import UserError</b>.
                                 </p>
 
                                 <h3 style="margin: 0 0 8px 0;">Examples</h3>
-                                <p style="margin: 0 0 4px 0;"><b>1) Minimal successful tool</b></p>
-                                <pre style="white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e2e3e5; border-radius: 6px; padding: 10px; margin: 0 0 12px 0;">result = {
+                                <p style="margin: 0 0 4px 0;">
+                                    <b>1) Minimal successful tool</b>
+                                </p>
+                                <pre
+                                    style="white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e2e3e5; border-radius: 6px; padding: 10px; margin: 0 0 12px 0;"
+                                >result = {
     'success': True,
     'message': 'Done',
 }</pre>
 
-                                <p style="margin: 0 0 4px 0;"><b>2) Validate required params</b></p>
-                                <pre style="white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e2e3e5; border-radius: 6px; padding: 10px; margin: 0 0 12px 0;">name = (params.get('name') or '').strip()
+                                <p style="margin: 0 0 4px 0;">
+                                    <b>2) Validate required params</b>
+                                </p>
+                                <pre
+                                    style="white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e2e3e5; border-radius: 6px; padding: 10px; margin: 0 0 12px 0;"
+                                >name = (params.get('name') or '').strip()
 if not name:
     raise UserError('Parameter "name" is required')
 
 result = {'success': True, 'name': name}</pre>
 
-                                <p style="margin: 0 0 4px 0;"><b>3) Post rendered HTML message (Markup)</b></p>
-                                <pre style="white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e2e3e5; border-radius: 6px; padding: 10px; margin: 0 0 16px 0;">from markupsafe import Markup
+                                <p style="margin: 0 0 4px 0;">
+                                    <b>3) Post rendered HTML message (Markup)</b>
+                                </p>
+                                <pre
+                                    style="white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e2e3e5; border-radius: 6px; padding: 10px; margin: 0 0 16px 0;"
+                                >from markupsafe import Markup
 
 lead = env['crm.lead'].browse(params['lead_id'])
 chat_url = f"/web#action=chatroom.action_chatroom_app&amp;room_id={room.id}"
@@ -166,10 +195,16 @@ lead.message_post(body=Markup(body), subtype_xmlid='mail.mt_note')
 result = {'success': True}</pre>
 
                                 <h3 style="margin: 0 0 8px 0;">Debugging Tips</h3>
-                                <p style="margin: 0;">Use <b>_logger.info(...)</b> to inspect params and flow.</p>
-                                <p style="margin: 0;">Keep output as simple dicts (avoid recordsets in result).</p>
-                                <p style="margin: 0;">Wrap risky logic in try/except and return clear error messages.</p>
-                                <p style="margin: 0;">Use the <b>Test Tool</b> button before assigning to agents.</p>
+                                <p style="margin: 0;">Use <b
+                                >_logger.info(...)</b> to inspect params and flow.</p>
+                                <p
+                                    style="margin: 0;"
+                                >Keep output as simple dicts (avoid recordsets in result).</p>
+                                <p
+                                    style="margin: 0;"
+                                >Wrap risky logic in try/except and return clear error messages.</p>
+                                <p style="margin: 0;">Use the <b
+                                >Test Tool</b> button before assigning to agents.</p>
                             </div>
                         </page>
 

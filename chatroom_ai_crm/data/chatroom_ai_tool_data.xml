@@ -5,7 +5,7 @@
         <field
             name="description"
         >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data.</field>
-                <field name="example_usage">[
+        <field name="example_usage">[
     {
         "when": "WhatsApp prospect asks for financing and wants follow-up call",
         "call": {
@@ -258,7 +258,7 @@ try:
             existing_lead.write({'probability': target_probability})
 
         target_priority = priority_by_temp.get(lead_temperature)
-        if target_priority and (existing_lead.priority or '0') < target_priority:
+        if target_priority and (existing_lead.priority or '0') &lt; target_priority:
             existing_lead.write({'priority': target_priority})
 
         if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:

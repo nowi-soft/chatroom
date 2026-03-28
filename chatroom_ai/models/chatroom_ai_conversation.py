@@ -93,7 +93,9 @@ class ChatroomAIConversation(models.Model):
 
         room = self.room_id
         connector = room.connector_id
-        connector_type = (connector.connector_type or "unknown").lower() if connector else "unknown"
+        connector_type = (
+            (connector.connector_type or "unknown").lower() if connector else "unknown"
+        )
         external_id = room.external_id or ""
 
         lines = ["=== CHANNEL CONTEXT ==="]
@@ -104,9 +106,13 @@ class ChatroomAIConversation(models.Model):
         # Channel-specific guidance to avoid redundant questions.
         if connector_type == "evolution":
             lines.append(
-                "- External ID usually maps to WhatsApp phone. Avoid asking phone again unless strictly required."
+                "- External ID usually maps to WhatsApp phone. "
+                "Avoid asking phone again unless strictly required."
             )
-            lines.append("- If needed, confirm contact data briefly instead of re-collecting from scratch.")
+            lines.append(
+                "- If needed, confirm contact data briefly "
+                "instead of re-collecting from scratch."
+            )
         elif connector_type == "telegram":
             lines.append(
                 "- External ID is Telegram chat/user ID, not a guaranteed phone number."
@@ -116,7 +122,8 @@ class ChatroomAIConversation(models.Model):
             )
         else:
             lines.append(
-                "- Do not assume external_id is a phone number; validate contact data only when needed."
+                "- Do not assume external_id is a phone number; "
+                "validate contact data only when needed."
             )
 
         partner_names = []
@@ -126,7 +133,8 @@ class ChatroomAIConversation(models.Model):
             lines.append(f"- Linked contacts in Odoo: {', '.join(partner_names)}")
 
         lines.append(
-            "- Keep questions minimal and action-oriented; avoid repeating data already available in metadata."
+            "- Keep questions minimal and action-oriented; "
+            "avoid repeating data already available in metadata."
         )
 
         return "\n".join(lines)

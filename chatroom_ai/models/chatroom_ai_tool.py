@@ -89,7 +89,9 @@ Must return a dict with result information.""",
         except (json.JSONDecodeError, ValueError):
             raw_schema = {}
 
-        if isinstance(raw_schema, dict) and isinstance(raw_schema.get("parameters"), dict):
+        if isinstance(raw_schema, dict) and isinstance(
+            raw_schema.get("parameters"), dict
+        ):
             parameters = raw_schema.get("parameters")
         elif isinstance(raw_schema, dict):
             parameters = raw_schema
