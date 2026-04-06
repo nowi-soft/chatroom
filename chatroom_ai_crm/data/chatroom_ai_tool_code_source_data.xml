@@ -63,15 +63,13 @@ try:
     ).lower() in ('1', 'true', 'yes', 'y', 'on')
     target_type = 'lead' if crm_use_lead else 'opportunity'
 
-    # Only infer phone from room.external_id for channels where external_id is the phone (e.g. Evolution/WhatsApp).
     room_external_id = _clean(room.external_id if room else False)
-    if not phone and connector_type in ('evolution',) and room_external_id:
-        normalized_room_phone = ''.join(
-            c for c in room_external_id if c.isdigit() or c == '+'
-        )
-        digits_count = sum(1 for c in normalized_room_phone if c.isdigit())
-        if digits_count >= 8:
-            phone = normalized_room_phone
+
+    # Fallback phone from linked partner (more reliable than parsing external_id).
+    if not phone and room and room.partner_ids:
+        partner_phone = _clean(room.partner_ids[0].phone or room.partner_ids[0].mobile)
+        if partner_phone:
+            phone = partner_phone
 
     if lead_temperature not in ('cold', 'warm', 'hot'):
         lead_temperature = ''
