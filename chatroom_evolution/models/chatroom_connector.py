@@ -235,7 +235,16 @@ class ChatroomConnector(models.Model):
             message_info = message_data.get("message", {})
             key = message_data.get("key", {})
 
-            phone_number = key.get("remoteJid", "").replace("@s.whatsapp.net", "")
+            remote_jid = key.get("remoteJid", "")
+            remote_jid_alt = key.get("remoteJidAlt", "")
+
+            # Prefer remoteJidAlt when remoteJid is a LID — it carries the real phone number.
+            if "@lid" in remote_jid and remote_jid_alt:
+                phone_number = remote_jid_alt.replace("@s.whatsapp.net", "")
+                external_id = remote_jid_alt.replace("@s.whatsapp.net", "")
+            else:
+                phone_number = remote_jid.replace("@s.whatsapp.net", "")
+                external_id = phone_number
 
             sender_name = message_data.get("pushName", phone_number)
 
@@ -276,16 +285,26 @@ class ChatroomConnector(models.Model):
                 message_text = self.env._("Unsupported message type")
 
             room = self.env["chatroom.room"].search(
-                [("connector_id", "=", self.id), ("external_id", "=", phone_number)],
+                [("connector_id", "=", self.id), ("external_id", "=", external_id)],
                 limit=1,
             )
 
             if not room:
+                # Also try to find by original LID in case room was created before the fix.
+                if external_id != phone_number:
+                    room = self.env["chatroom.room"].search(
+                        [("connector_id", "=", self.id), ("external_id", "=", key.get("remoteJid", ""))],
+                        limit=1,
+                    )
+                    if room:
+                        room.write({"external_id": external_id})
+
+            if not room:
                 room = self.env["chatroom.room"].create(
                     {
-                        "name": sender_name or phone_number,
+                        "name": sender_name or external_id,
                         "connector_id": self.id,
-                        "external_id": phone_number,
+                        "external_id": external_id,
                         "state": "unassigned",
                     }
                 )
