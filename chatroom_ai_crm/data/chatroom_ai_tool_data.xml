@@ -1,4 +1,4 @@
-<odoo noupdate="1">
+<odoo>
     <record id="ai_tool_create_lead" model="chatroom.ai.tool">
         <field name="name">Create Lead</field>
         <field name="code_name">create_lead</field>
