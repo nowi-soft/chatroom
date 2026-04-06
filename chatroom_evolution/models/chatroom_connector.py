@@ -238,6 +238,10 @@ class ChatroomConnector(models.Model):
             remote_jid = key.get("remoteJid", "")
             remote_jid_alt = key.get("remoteJidAlt", "")
 
+            # Ignore special/system JIDs that are not real contacts.
+            if not remote_jid or "status@broadcast" in remote_jid or "newsletter" in remote_jid:
+                return None
+
             # Prefer remoteJidAlt when remoteJid is a LID — it carries the real phone number.
             if "@lid" in remote_jid and remote_jid_alt:
                 phone_number = remote_jid_alt.replace("@s.whatsapp.net", "")
@@ -245,6 +249,10 @@ class ChatroomConnector(models.Model):
             else:
                 phone_number = remote_jid.replace("@s.whatsapp.net", "")
                 external_id = phone_number
+
+            # Skip if we still have no usable identifier.
+            if not external_id:
+                return None
 
             sender_name = message_data.get("pushName", phone_number)
 
@@ -281,6 +289,9 @@ class ChatroomConnector(models.Model):
                 message_type = "audio"
                 mime_type = audio_msg.get("mimetype", "audio/ogg")
                 filename = f"audio_{key.get('id', 'unknown')}.ogg"
+            elif message_info:
+                # Unknown message type (reaction, poll, sticker, etc.) — skip silently.
+                return None
             else:
                 message_text = self.env._("Unsupported message type")
 
