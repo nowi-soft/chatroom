@@ -4,20 +4,41 @@
         <field name="code_name">create_lead</field>
         <field
             name="description"
-        >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data.</field>
+        >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data. IMPORTANT: For WhatsApp/Evolution channels the platform does NOT provide the contact phone number automatically — you must ask the customer for their phone number before calling this tool whenever you do not already have it from the conversation.</field>
         <field name="example_usage">[
     {
-        "when": "WhatsApp prospect asks for financing and wants follow-up call",
+        "when": "WhatsApp prospect shows commercial intent but phone not yet known",
+        "steps": [
+            "Ask: '¿Me podés compartir tu número de teléfono para que te contactemos?'",
+            "Wait for customer reply with phone number",
+            "Then call create_lead with the phone they provided"
+        ],
         "call": {
             "name": "create_lead",
             "arguments": {
                 "name": "Interesado en Yamaha FZ - financiacion",
                 "contact_name": "Martin",
+                "phone": "5491122334455",
                 "description": "Cliente quiere financiacion para Yamaha FZ y pide avanzar hoy.",
                 "intent_signal": "Pidio avanzar con propuesta de financiacion",
                 "lead_temperature": "hot",
                 "sentiment_summary": "Motivado, listo para avanzar",
                 "next_action": "Enviar propuesta y llamar en el dia"
+            }
+        }
+    },
+    {
+        "when": "WhatsApp prospect shows commercial intent and already gave phone in conversation",
+        "call": {
+            "name": "create_lead",
+            "arguments": {
+                "name": "Interesado en Honda XR300",
+                "contact_name": "Franco",
+                "phone": "5492611234567",
+                "description": "Cliente interesado en XR300, quiere prueba de manejo mañana.",
+                "intent_signal": "Agendo prueba de manejo para mañana",
+                "lead_temperature": "hot",
+                "next_action": "Confirmar turno prueba de manejo"
             }
         }
     },
@@ -46,7 +67,7 @@
             },
             "phone": {
                 "type": "string",
-                "description": "Phone number (optional if channel metadata already provides contact)"
+                "description": "Phone number. For WhatsApp/Evolution channels the platform does NOT provide this automatically — ask the customer for it during the conversation before calling this tool."
             },
             "description": {
                 "type": "string",
