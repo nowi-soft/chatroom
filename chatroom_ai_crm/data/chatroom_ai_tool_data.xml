@@ -4,7 +4,7 @@
         <field name="code_name">create_lead</field>
         <field
             name="description"
-        >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data. IMPORTANT: For WhatsApp/Evolution channels the platform does NOT provide the contact phone number automatically — you must ask the customer for their phone number before calling this tool whenever you do not already have it from the conversation.</field>
+        >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data. For WhatsApp/Evolution channels the phone number is usually resolved automatically from the channel metadata. If it is not available and the customer has not provided it during the conversation, ask for it before calling this tool.</field>
         <field name="example_usage">[
     {
         "when": "WhatsApp prospect shows commercial intent but phone not yet known",

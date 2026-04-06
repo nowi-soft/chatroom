@@ -65,11 +65,19 @@ try:
 
     room_external_id = _clean(room.external_id if room else False)
 
-    # Fallback phone from linked partner (more reliable than parsing external_id).
+    # Fallback phone from linked partner.
     if not phone and room and room.partner_ids:
         partner_phone = _clean(room.partner_ids[0].phone or room.partner_ids[0].mobile)
         if partner_phone:
             phone = partner_phone
+
+    # Fallback phone from room.external_id for Evolution/WhatsApp channels.
+    # Since the webhook fix, external_id is set to the real phone number (no '@' suffix).
+    # Ignore LID values that still contain '@' (old rooms created before the fix).
+    if not phone and connector_type in ('evolution',) and room_external_id and '@' not in room_external_id:
+        digits = ''.join(c for c in room_external_id if c.isdigit() or c == '+')
+        if sum(1 for c in digits if c.isdigit()) >= 8:
+            phone = digits
 
     if lead_temperature not in ('cold', 'warm', 'hot'):
         lead_temperature = ''
