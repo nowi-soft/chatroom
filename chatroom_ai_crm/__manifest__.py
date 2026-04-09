@@ -1,6 +1,6 @@
 {
     "name": "ChatRoom AI - CRM Tools",
-    "version": "19.0.1.0.0",
+    "version": "18.0.1.0.0",
     "category": "Services/ChatRoom",
     "summary": "CRM tools for AI agents (create leads, search contacts)",
     "author": "Nowi",

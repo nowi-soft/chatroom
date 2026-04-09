@@ -1,6 +1,6 @@
 {
     "name": "ChatRoom CRM",
-    "version": "19.0.1.0.0",
+    "version": "18.0.1.0.0",
     "category": "Services/ChatRoom",
     "summary": "Create CRM leads from chat conversations",
     "author": "Nowi",
