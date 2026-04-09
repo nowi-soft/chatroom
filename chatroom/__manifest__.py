@@ -5,7 +5,6 @@
     "summary": "Manage customer conversations and chat rooms",
     "author": "Nowi",
     "website": "https://nowi.com.ar",
-    "icon": "/chatroom/static/description/icon.svg",
     "license": "LGPL-3",
     "depends": [
         "base",
