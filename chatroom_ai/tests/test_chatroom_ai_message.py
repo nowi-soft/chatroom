@@ -21,9 +21,13 @@ class TestChatroomAIMessage(TransactionCase):
         self.assertTrue(message.ai_pending_processing)
         self.assertEqual(message.ai_processing_state, "pending")
 
-        job = self.env["queue.job"].sudo().search(
-            [("identity_key", "=", f"ai_process_room_{self.room.id}")],
-            limit=1,
+        job = (
+            self.env["queue.job"]
+            .sudo()
+            .search(
+                [("identity_key", "=", f"ai_process_room_{self.room.id}")],
+                limit=1,
+            )
         )
         self.assertTrue(job)
 

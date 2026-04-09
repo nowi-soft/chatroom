@@ -60,16 +60,19 @@ class TestAIMessageProcessing(TransactionCase):
         )
 
         agent_class = type(self.agent)
-        with patch.object(
-            agent_class,
-            "get_or_create_conversation",
-            autospec=True,
-            return_value=conversation,
-        ), patch.object(
-            agent_class,
-            "_generate_and_send_response",
-            autospec=True,
-            return_value=None,
+        with (
+            patch.object(
+                agent_class,
+                "get_or_create_conversation",
+                autospec=True,
+                return_value=conversation,
+            ),
+            patch.object(
+                agent_class,
+                "_generate_and_send_response",
+                autospec=True,
+                return_value=None,
+            ),
         ):
             msg_text._job_process_room_messages()
 
@@ -105,16 +108,19 @@ class TestAIMessageProcessing(TransactionCase):
 
         conv_class = type(conversation)
         agent_class = type(self.agent)
-        with patch.object(
-            agent_class,
-            "get_or_create_conversation",
-            autospec=True,
-            return_value=conversation,
-        ), patch.object(
-            conv_class,
-            "add_message",
-            autospec=True,
-            side_effect=RuntimeError("boom"),
+        with (
+            patch.object(
+                agent_class,
+                "get_or_create_conversation",
+                autospec=True,
+                return_value=conversation,
+            ),
+            patch.object(
+                conv_class,
+                "add_message",
+                autospec=True,
+                side_effect=RuntimeError("boom"),
+            ),
         ):
             with self.assertRaises(RuntimeError):
                 msg._job_process_room_messages()

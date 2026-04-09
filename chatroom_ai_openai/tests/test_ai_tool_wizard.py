@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
 
@@ -55,5 +56,5 @@ class TestAIToolWizard(TransactionCase):
             }
         )
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(UserError):
             wizard.action_run_test()

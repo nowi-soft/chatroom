@@ -124,17 +124,20 @@ class TestChatroomAIAgent(TransactionCase):
     def test_generate_and_send_response_empty_result_pauses_room(self):
         provider_class = type(self.provider)
         room_class = type(self.room)
-        with patch.object(
-            provider_class,
-            "generate_completion",
-            autospec=True,
-            return_value={},
-        ), patch.object(
-            room_class,
-            "action_pause_ai_and_request_attention",
-            autospec=True,
-            return_value=True,
-        ) as pause_action:
+        with (
+            patch.object(
+                provider_class,
+                "generate_completion",
+                autospec=True,
+                return_value={},
+            ),
+            patch.object(
+                room_class,
+                "action_pause_ai_and_request_attention",
+                autospec=True,
+                return_value=True,
+            ) as pause_action,
+        ):
             self.agent._generate_and_send_response(self.conversation.id)
 
         self.assertGreaterEqual(pause_action.call_count, 1)

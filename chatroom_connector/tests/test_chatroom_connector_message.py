@@ -76,8 +76,12 @@ class TestChatroomConnectorMessage(TransactionCase):
         self.assertEqual(fake_message.external_id, "ext-123")
 
     def test_send_through_connector_skips_inactive_or_missing_phone(self):
-        inactive_connector = SimpleNamespace(active=False, send_message=lambda **kwargs: {})
-        inactive_room = SimpleNamespace(connector_id=inactive_connector, external_id="+549")
+        inactive_connector = SimpleNamespace(
+            active=False, send_message=lambda **kwargs: {}
+        )
+        inactive_room = SimpleNamespace(
+            connector_id=inactive_connector, external_id="+549"
+        )
         missing_phone_room = SimpleNamespace(
             connector_id=SimpleNamespace(active=True, send_message=lambda **kwargs: {}),
             external_id=False,

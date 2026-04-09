@@ -239,10 +239,15 @@ class ChatroomConnector(models.Model):
             remote_jid_alt = key.get("remoteJidAlt", "")
 
             # Ignore special/system JIDs that are not real contacts.
-            if not remote_jid or "status@broadcast" in remote_jid or "newsletter" in remote_jid:
+            if (
+                not remote_jid
+                or "status@broadcast" in remote_jid
+                or "newsletter" in remote_jid
+            ):
                 return None
 
-            # Prefer remoteJidAlt when remoteJid is a LID — it carries the real phone number.
+            # Prefer remoteJidAlt when remoteJid is a LID —
+            # it carries the real phone number.
             if "@lid" in remote_jid and remote_jid_alt:
                 phone_number = remote_jid_alt.replace("@s.whatsapp.net", "")
                 external_id = remote_jid_alt.replace("@s.whatsapp.net", "")
@@ -256,44 +261,11 @@ class ChatroomConnector(models.Model):
 
             sender_name = message_data.get("pushName", phone_number)
 
-            message_text = ""
-            media_url = None
-            message_type = "text"
-            filename = None
-            mime_type = None
-
-            if "conversation" in message_info:
-                message_text = message_info["conversation"]
-                message_type = "text"
-            elif "extendedTextMessage" in message_info:
-                message_text = message_info["extendedTextMessage"].get("text", "")
-                message_type = "text"
-            elif "imageMessage" in message_info:
-                img_msg = message_info["imageMessage"]
-                message_text = img_msg.get("caption", "")
-                media_url = img_msg.get("url", "")
-                message_type = "image"
-                mime_type = img_msg.get("mimetype", "image/jpeg")
-                filename = f"image_{key.get('id', 'unknown')}.jpg"
-            elif "documentMessage" in message_info:
-                doc_msg = message_info["documentMessage"]
-                filename = doc_msg.get("fileName", "Document")
-                message_text = doc_msg.get("caption", "")
-                media_url = doc_msg.get("url", "")
-                message_type = "file"
-                mime_type = doc_msg.get("mimetype", "application/octet-stream")
-            elif "audioMessage" in message_info:
-                audio_msg = message_info["audioMessage"]
-                message_text = self.env._("Voice message")
-                media_url = audio_msg.get("url", "")
-                message_type = "audio"
-                mime_type = audio_msg.get("mimetype", "audio/ogg")
-                filename = f"audio_{key.get('id', 'unknown')}.ogg"
-            elif message_info:
-                # Unknown message type (reaction, poll, sticker, etc.) — skip silently.
+            message_text, media_url, message_type, filename, mime_type = (
+                self._parse_evolution_message_info(message_info, key)
+            )
+            if message_type is None:
                 return None
-            else:
-                message_text = self.env._("Unsupported message type")
 
             room = self.env["chatroom.room"].search(
                 [("connector_id", "=", self.id), ("external_id", "=", external_id)],
@@ -301,10 +273,14 @@ class ChatroomConnector(models.Model):
             )
 
             if not room:
-                # Also try to find by original LID in case room was created before the fix.
+                # Also try to find by original LID in case room was created
+                # before the external_id fix.
                 if external_id != phone_number:
                     room = self.env["chatroom.room"].search(
-                        [("connector_id", "=", self.id), ("external_id", "=", key.get("remoteJid", ""))],
+                        [
+                            ("connector_id", "=", self.id),
+                            ("external_id", "=", key.get("remoteJid", "")),
+                        ],
                         limit=1,
                     )
                     if room:
@@ -344,6 +320,50 @@ class ChatroomConnector(models.Model):
             return message
 
         except Exception as e:
-            _logger.error(f"Error processing webhook: {str(e)}")
+            _logger.error("Error processing webhook: %s", e)
             self.error_message = str(e)
             raise
+
+    def _parse_evolution_message_info(self, message_info, key):
+        """Parse message_info dict and return (text, media_url, type, filename, mime).
+
+        Returns (None, None, None, None, None) when the message should be skipped.
+        """
+        message_text = ""
+        media_url = None
+        message_type = "text"
+        filename = None
+        mime_type = None
+
+        if "conversation" in message_info:
+            message_text = message_info["conversation"]
+        elif "extendedTextMessage" in message_info:
+            message_text = message_info["extendedTextMessage"].get("text", "")
+        elif "imageMessage" in message_info:
+            img_msg = message_info["imageMessage"]
+            message_text = img_msg.get("caption", "")
+            media_url = img_msg.get("url", "")
+            message_type = "image"
+            mime_type = img_msg.get("mimetype", "image/jpeg")
+            filename = f"image_{key.get('id', 'unknown')}.jpg"
+        elif "documentMessage" in message_info:
+            doc_msg = message_info["documentMessage"]
+            filename = doc_msg.get("fileName", "Document")
+            message_text = doc_msg.get("caption", "")
+            media_url = doc_msg.get("url", "")
+            message_type = "file"
+            mime_type = doc_msg.get("mimetype", "application/octet-stream")
+        elif "audioMessage" in message_info:
+            audio_msg = message_info["audioMessage"]
+            message_text = self.env._("Voice message")
+            media_url = audio_msg.get("url", "")
+            message_type = "audio"
+            mime_type = audio_msg.get("mimetype", "audio/ogg")
+            filename = f"audio_{key.get('id', 'unknown')}.ogg"
+        elif message_info:
+            # Unknown type (reaction, poll, sticker, etc.) — skip silently.
+            return None, None, None, None, None
+        else:
+            message_text = self.env._("Unsupported message type")
+
+        return message_text, media_url, message_type, filename, mime_type

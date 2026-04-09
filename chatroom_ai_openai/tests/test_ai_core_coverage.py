@@ -62,7 +62,11 @@ class TestAICoreCoverage(TransactionCase):
             autospec=True,
             return_value={
                 "content": "ok",
-                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                "usage": {
+                    "prompt_tokens": 1,
+                    "completion_tokens": 1,
+                    "total_tokens": 2,
+                },
             },
         ):
             result = self.provider.generate_completion(

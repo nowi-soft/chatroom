@@ -7,9 +7,9 @@ class TestChatroomConnectorModel(TransactionCase):
         super().setUpClass()
         cls.env["ir.config_parameter"].sudo().set_param("web.base.url", "http://test")
         cls.connector = cls.env["chatroom.connector"].new({"name": "Test Connector"})
-        cls.connector_type_options = cls.env["chatroom.connector"]._fields[
-            "connector_type"
-        ].selection
+        cls.connector_type_options = (
+            cls.env["chatroom.connector"]._fields["connector_type"].selection
+        )
 
     def test_compute_webhook_url(self):
         if not self.connector_type_options:

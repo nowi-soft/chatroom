@@ -53,7 +53,9 @@ class TestChatroomAIProvider(TransactionCase):
     def test_generate_completion_requires_active_state(self):
         self.provider.state = "draft"
         with self.assertRaises(UserError):
-            self.provider.generate_completion(messages=[{"role": "user", "content": "hi"}])
+            self.provider.generate_completion(
+                messages=[{"role": "user", "content": "hi"}]
+            )
 
     def test_generate_completion_updates_stats(self):
         self.provider.state = "active"
@@ -64,7 +66,11 @@ class TestChatroomAIProvider(TransactionCase):
             autospec=True,
             return_value={
                 "content": "ok",
-                "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+                "usage": {
+                    "prompt_tokens": 1,
+                    "completion_tokens": 2,
+                    "total_tokens": 3,
+                },
             },
         ):
             result = self.provider.generate_completion(
