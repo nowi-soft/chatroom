@@ -3,7 +3,7 @@
         id="menu_chatroom_root"
         name="ChatRoom"
         sequence="50"
-        web_icon="chatroom,static/description/icon.png"
+        web_icon="chatroom,static/description/icon.svg"
         groups="group_chatroom_user"
     />
 
