@@ -116,8 +116,8 @@ class ChatroomRoom(models.Model):
                 "last_message_preview": room.last_message_preview,
             }
 
-            chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
-            chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
+            chatroom_users = self.env.ref("chatroom.group_chatroom_user").users
+            chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").users
             all_chatroom_users = chatroom_users | chatroom_managers
 
             if room.state in ["assigned", "unassigned"]:

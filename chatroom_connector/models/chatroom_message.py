@@ -27,8 +27,6 @@ class ChatroomMessage(models.Model):
             ):
                 self._send_through_connector(message)
 
-            message._notify_message_created()
-
         return messages
 
     def _send_through_connector(self, message):

@@ -5,7 +5,7 @@ from odoo.http import request
 
 
 class ChatroomSimulator(http.Controller):
-    @http.route("/chatroom/simulate/message", type="jsonrpc", auth="user")
+    @http.route("/chatroom/simulate/message", type="json", auth="user")
     def simulate_incoming_message(self, room_id=None, **kw):
         sample_messages = [
             "Hi! I want to ask about a product",
@@ -44,7 +44,7 @@ class ChatroomSimulator(http.Controller):
 
         return {"success": True, "message_id": message.id, "room_id": room_id}
 
-    @http.route("/chatroom/simulate/new_chat", type="jsonrpc", auth="user")
+    @http.route("/chatroom/simulate/new_chat", type="json", auth="user")
     def simulate_new_chat(self, **kw):
         room = request.env["chatroom.room"].create(
             {
@@ -65,7 +65,7 @@ class ChatroomSimulator(http.Controller):
 
         return {"success": True, "room_id": room.id}
 
-    @http.route("/chatroom/simulate/batch", type="jsonrpc", auth="user")
+    @http.route("/chatroom/simulate/batch", type="json", auth="user")
     def simulate_batch(self, count=5, **kw):
         rooms = []
         for _i in range(count):

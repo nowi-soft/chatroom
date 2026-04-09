@@ -291,15 +291,21 @@ class ChatroomMessage(models.Model):
         }
 
         try:
-            chatroom_users = self.env.ref("chatroom.group_chatroom_user").all_user_ids
+            chatroom_user_group = self.env.ref("chatroom.group_chatroom_user")
+            chatroom_users = getattr(
+                chatroom_user_group, "all_user_ids", chatroom_user_group.users
+            )
         except Exception as e:
             _logger.error(f"Error getting chatroom users: {e}")
             chatroom_users = self.env["res.users"]
 
         try:
-            chatroom_managers = self.env.ref(
-                "chatroom.group_chatroom_manager"
-            ).all_user_ids
+            chatroom_manager_group = self.env.ref("chatroom.group_chatroom_manager")
+            chatroom_managers = getattr(
+                chatroom_manager_group,
+                "all_user_ids",
+                chatroom_manager_group.users,
+            )
         except Exception as e:
             _logger.error(f"Error getting chatroom managers: {e}")
             chatroom_managers = self.env["res.users"]

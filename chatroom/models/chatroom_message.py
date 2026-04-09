@@ -148,8 +148,8 @@ class ChatroomMessage(models.Model):
             "attachment_id": self.attachment_id.id if self.attachment_id else False,
         }
 
-        chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
-        chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
+        chatroom_users = self.env.ref("chatroom.group_chatroom_user").users
+        chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").users
 
         users_to_notify = chatroom_managers
 

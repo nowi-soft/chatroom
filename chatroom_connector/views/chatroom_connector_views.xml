@@ -29,9 +29,11 @@
                             />
                         </button>
                         <button
+                            name="%(chatroom.action_chatroom_room)d"
+                            type="action"
                             class="oe_stat_button"
                             icon="fa-paper-plane"
-                            type="object"
+                            context="{'search_default_connector_id': id}"
                         >
                             <field
                                 name="messages_sent"
