@@ -2,6 +2,7 @@ from unittest import SkipTest
 
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 class TestChatroomAITool(TransactionCase):
@@ -48,7 +49,8 @@ class TestChatroomAITool(TransactionCase):
             }
         )
 
-        definition = tool.get_tool_definition()
+        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_tool"):
+            definition = tool.get_tool_definition()
         self.assertEqual(definition["name"], "normalize_tool")
         self.assertEqual(definition["parameters"]["type"], "object")
         self.assertIsInstance(definition["parameters"]["properties"], dict)

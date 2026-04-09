@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 class TestAICoreCoverage(TransactionCase):
@@ -83,7 +84,9 @@ class TestAICoreCoverage(TransactionCase):
 
     def test_conversation_context_helpers(self):
         self.conversation.context_messages = "{bad"
-        self.assertEqual(self.conversation._load_context(), [])
+        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_conversation"):
+            self.assertEqual(self.conversation._load_context(), [])
+        self.conversation.context_messages = json.dumps([])
 
         msg1 = self.env["chatroom.message"].create(
             {"room_id": self.room.id, "body": "one", "direction": "incoming"}
@@ -122,7 +125,8 @@ class TestAICoreCoverage(TransactionCase):
                 "python_code": "",
             }
         )
-        definition = tool.get_tool_definition()
+        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_tool"):
+            definition = tool.get_tool_definition()
         self.assertEqual(definition["parameters"]["type"], "object")
 
         action = tool.action_copy_source_to_implementation()

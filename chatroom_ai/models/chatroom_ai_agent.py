@@ -135,7 +135,6 @@ Always maintain conversation context from previous messages.
     )
     conversation_count = fields.Integer(
         compute="_compute_conversation_count",
-        string="Conversations",
     )
 
     @api.depends("conversation_ids")

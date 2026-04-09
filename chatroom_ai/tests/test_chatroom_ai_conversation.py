@@ -2,6 +2,7 @@ import json
 from unittest import SkipTest
 
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 class TestChatroomAIConversation(TransactionCase):
@@ -39,7 +40,8 @@ class TestChatroomAIConversation(TransactionCase):
 
     def test_load_context_invalid_json(self):
         self.conversation.context_messages = "{broken"
-        self.assertEqual(self.conversation._load_context(), [])
+        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_conversation"):
+            self.assertEqual(self.conversation._load_context(), [])
 
     def test_add_message_and_summary(self):
         msg1 = self.env["chatroom.message"].create(

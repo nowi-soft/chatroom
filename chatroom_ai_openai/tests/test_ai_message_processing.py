@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 class TestAIMessageProcessing(TransactionCase):
@@ -122,5 +123,6 @@ class TestAIMessageProcessing(TransactionCase):
                 side_effect=RuntimeError("boom"),
             ),
         ):
-            with self.assertRaises(RuntimeError):
-                msg._job_process_room_messages()
+            with mute_logger("odoo.addons.chatroom_ai.models.chatroom_message"):
+                with self.assertRaises(RuntimeError):
+                    msg._job_process_room_messages()
