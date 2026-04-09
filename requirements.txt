@@ -1,7 +1,7 @@
 # generated from manifests external_dependencies
 PyPDF2
 openai
-openpyxl>=3.1.5
+openpyxl
 pandas
 python-docx
 requests
