@@ -37,13 +37,19 @@ class ChatroomRoom(models.Model):
 
     @api.depends("message_ids")
     def _compute_message_count(self):
+        if not self.ids:
+            return
+        counts = self.env["chatroom.message"].read_group(
+            [("room_id", "in", self.ids)], ["room_id"], ["room_id"]
+        )
+        count_map = {r["room_id"][0]: r["room_id_count"] for r in counts}
         for room in self:
-            room.message_count = len(room.message_ids)
+            room.message_count = count_map.get(room.id, 0)
 
     @api.depends("message_ids.create_date", "message_ids.body")
     def _compute_last_message(self):
         for room in self:
-            last_msg = room.message_ids[:1]
+            last_msg = room.message_ids[-1:]
             room.last_message_date = last_msg.create_date if last_msg else False
             room.last_message_preview = last_msg.body[:50] if last_msg else ""
 
@@ -96,7 +102,8 @@ class ChatroomRoom(models.Model):
         return True
 
     def action_reopen(self):
-        self.state = "assigned" if self.assigned_to_id else "unassigned"
+        for room in self:
+            room.state = "assigned" if room.assigned_to_id else "unassigned"
         self._notify_room_updated()
         return True
 

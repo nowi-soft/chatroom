@@ -154,6 +154,14 @@ class ChatroomMessage(models.Model):
                 }
             )
 
+            agent = (
+                room.ai_agent_id
+                if room.ai_agent_id
+                else self.env["chatroom.ai.agent"].search(
+                    [("active", "=", True)], limit=1
+                )
+            )
+
             audio_messages = room_messages.filtered(
                 lambda m: m.message_type == "audio" and m.direction == "incoming"
             )
@@ -165,13 +173,6 @@ class ChatroomMessage(models.Model):
                     audio_msg.write({"is_transcribing": True})
                     audio_msg._notify_message_created()
 
-                    agent = (
-                        room.ai_agent_id
-                        if room.ai_agent_id
-                        else self.env["chatroom.ai.agent"].search(
-                            [("active", "=", True)], limit=1
-                        )
-                    )
                     if agent:
                         transcription = agent._transcribe_audio(audio_msg)
                         if transcription:
@@ -190,14 +191,6 @@ class ChatroomMessage(models.Model):
                                     "is_transcription_failed": True,
                                 }
                             )
-
-            agent = (
-                room.ai_agent_id
-                if room.ai_agent_id
-                else self.env["chatroom.ai.agent"].search(
-                    [("active", "=", True)], limit=1
-                )
-            )
 
             if not agent:
                 _logger.warning(
@@ -249,7 +242,9 @@ class ChatroomMessage(models.Model):
         except Exception as e:
             error_msg = str(e)
             _logger.error(
-                f"Error processing AI messages for room {room.id}: {error_msg}",
+                "Error processing AI messages for room %d: %s",
+                room.id,
+                error_msg,
                 exc_info=True,
             )
 
@@ -296,7 +291,7 @@ class ChatroomMessage(models.Model):
                 chatroom_user_group, "all_user_ids", chatroom_user_group.users
             )
         except Exception as e:
-            _logger.error(f"Error getting chatroom users: {e}")
+            _logger.error("Error getting chatroom users: %s", e)
             chatroom_users = self.env["res.users"]
 
         try:
@@ -307,7 +302,7 @@ class ChatroomMessage(models.Model):
                 chatroom_manager_group.users,
             )
         except Exception as e:
-            _logger.error(f"Error getting chatroom managers: {e}")
+            _logger.error("Error getting chatroom managers: %s", e)
             chatroom_managers = self.env["res.users"]
 
         users_to_notify = chatroom_managers

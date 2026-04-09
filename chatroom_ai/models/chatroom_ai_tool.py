@@ -210,7 +210,7 @@ Must return a dict with result information.""",
     def execute(self, room, params, conversation):
         self.ensure_one()
 
-        _logger.info(f"Executing tool {self.code_name} with params: {params}")
+        _logger.info("Executing tool %s with params: %s", self.code_name, params)
 
         try:
             result = None
@@ -234,7 +234,7 @@ Must return a dict with result information.""",
             return result or {"success": True}
 
         except Exception as e:
-            _logger.error(f"Error executing tool {self.code_name}: {str(e)}")
+            _logger.error("Error executing tool %s: %s", self.code_name, e)
             return {"error": str(e), "success": False}
 
     def _execute_python(self, room, params, conversation):

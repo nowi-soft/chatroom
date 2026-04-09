@@ -31,10 +31,30 @@ class ChatroomRoom(models.Model):
         string="AI Conversations",
     )
     ai_conversation_state = fields.Selection(
-        related="ai_conversation_ids.state",
+        [
+            ("active", "Active"),
+            ("paused", "Paused - Human Intervention"),
+            ("completed", "Completed"),
+            ("error", "Error"),
+            ("testing", "Testing"),
+        ],
         string="AI Status",
+        compute="_compute_ai_conversation_state",
         readonly=True,
     )
+
+    @api.depends("ai_conversation_ids.state")
+    def _compute_ai_conversation_state(self):
+        for room in self:
+            active_conv = room.ai_conversation_ids.filtered(
+                lambda c: c.state == "active"
+            )[:1]
+            if active_conv:
+                room.ai_conversation_state = active_conv.state
+            elif room.ai_conversation_ids:
+                room.ai_conversation_state = room.ai_conversation_ids[0].state
+            else:
+                room.ai_conversation_state = False
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -127,7 +147,7 @@ class ChatroomRoom(models.Model):
             for room in self:
                 if vals["assigned_to_id"]:
                     if room.needs_attention:
-                        room.write({"needs_attention": False})
+                        super(ChatroomRoom, room).write({"needs_attention": False})
                     if room.ai_enabled:
                         room.action_disable_ai()
                 else:
@@ -178,21 +198,21 @@ class ChatroomRoom(models.Model):
     def _notify_ai_state_change(self):
         self.ensure_one()
 
-        partners = self.env["res.partner"].search(
-            [
-                ("user_ids", "!=", False),
-            ]
-        )
+        chatroom_users = self.env.ref("chatroom.group_chatroom_user").users
+        chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").users
+        all_chatroom_users = chatroom_users | chatroom_managers
 
-        for partner in partners:
-            self.env["bus.bus"]._sendone(
-                partner,
-                "chatroom/ai_state_changed",
-                {
-                    "room_id": self.id,
-                    "ai_enabled": self.ai_enabled,
-                },
-            )
+        notified_partners = set()
+        for user in all_chatroom_users:
+            if user.partner_id and user.partner_id.id not in notified_partners:
+                notified_partners.add(user.partner_id.id)
+                user.partner_id._bus_send(
+                    "chatroom/ai_state_changed",
+                    {
+                        "room_id": self.id,
+                        "ai_enabled": self.ai_enabled,
+                    },
+                )
 
     def _notify_urgent_attention(self):
         self.ensure_one()
@@ -203,7 +223,7 @@ class ChatroomRoom(models.Model):
                 chatroom_user_group, "all_user_ids", chatroom_user_group.users
             )
         except Exception as e:
-            _logger.error(f"Error getting chatroom users: {e}")
+            _logger.error("Error getting chatroom users: %s", e)
             chatroom_users = self.env["res.users"]
 
         notified_partners = set()

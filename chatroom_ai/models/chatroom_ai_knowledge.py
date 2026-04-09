@@ -119,7 +119,7 @@ class ChatroomAIKnowledge(models.Model):
                 record.last_updated = fields.Datetime.now()
 
             except Exception as e:
-                _logger.error(f"Error processing knowledge {record.name}: {str(e)}")
+                _logger.error("Error processing knowledge %s: %s", record.name, e)
                 record.processing_status = "error"
                 record.processing_message = f"Error: {str(e)}"
                 raise
@@ -139,7 +139,7 @@ class ChatroomAIKnowledge(models.Model):
                     text += page.extract_text() + "\n"
                 return text.strip()
             except Exception as e:
-                _logger.error(f"Error extracting PDF: {str(e)}")
+                _logger.error("Error extracting PDF: %s", e)
                 return f"Error processing PDF file: {str(e)}"
 
         elif file_name.lower().endswith((".txt", ".md", ".csv")):
@@ -153,7 +153,7 @@ class ChatroomAIKnowledge(models.Model):
                 doc = docx.Document(io.BytesIO(file_data))
                 return "\n".join([para.text for para in doc.paragraphs])
             except Exception as e:
-                _logger.error(f"Error extracting DOCX: {str(e)}")
+                _logger.error("Error extracting DOCX: %s", e)
                 return f"Error processing DOCX file: {str(e)}"
 
         elif file_name.lower().endswith((".xls", ".xlsx")):
@@ -168,7 +168,7 @@ class ChatroomAIKnowledge(models.Model):
 
                 return text.strip()
             except Exception as e:
-                _logger.error(f"Error extracting Excel: {str(e)}")
+                _logger.error("Error extracting Excel: %s", e)
                 return f"Error processing Excel file: {str(e)}"
 
         else:
@@ -178,7 +178,13 @@ class ChatroomAIKnowledge(models.Model):
         self.ensure_one()
 
         if not self.processed_content:
-            self.action_process_content()
+            _logger.warning(
+                "Knowledge '%s' (ID=%d) has no processed content. "
+                "Run 'Process Content' to populate it.",
+                self.name,
+                self.id,
+            )
+            return ""
 
         formatted = f"=== Document: {self.name} ===\n"
         if self.description:

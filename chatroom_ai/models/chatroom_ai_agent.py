@@ -255,10 +255,12 @@ Always maintain conversation context from previous messages.
 
             if not result or (not has_content and not has_tool_calls):
                 _logger.error(
-                    f"AI response empty or invalid for room {room.name}. "
-                    f"Result: {result}, "
-                    f"Has content: {has_content}, "
-                    f"Has tool calls: {has_tool_calls}"
+                    "AI response empty or invalid for room %s. "
+                    "Result: %s, Has content: %s, Has tool calls: %s",
+                    room.name,
+                    result,
+                    has_content,
+                    has_tool_calls,
                 )
                 room.action_pause_ai_and_request_attention()
                 return
@@ -312,7 +314,7 @@ Always maintain conversation context from previous messages.
             )
 
         except Exception as e:
-            _logger.error(f"Error generating AI response: {str(e)}")
+            _logger.error("Error generating AI response: %s", e)
             conversation.write({"state": "error", "error_message": str(e)})
             room.action_pause_ai_and_request_attention()
 
@@ -371,7 +373,7 @@ Always maintain conversation context from previous messages.
 
         tool = self.tool_ids.filtered(lambda t: t.code_name == tool_name)
         if not tool:
-            _logger.warning(f"Tool {tool_name} not found for agent {self.name}")
+            _logger.warning("Tool %s not found for agent %s", tool_name, self.name)
             return {"error": f"Tool {tool_name} not found"}
 
         try:

@@ -54,8 +54,16 @@ class ChatroomMessage(models.Model):
             if result.get("success"):
                 if result.get("response", {}).get("messageId"):
                     message.external_id = result["response"]["messageId"]
+            else:
+                _logger.warning(
+                    "Connector returned failure for message %d: %s",
+                    message.id,
+                    result.get("error") or result,
+                )
 
         except Exception as e:
             _logger.warning(
-                f"Failed to send message {message.id} through connector: {e}"
+                "Failed to send message %d through connector: %s",
+                message.id,
+                e,
             )

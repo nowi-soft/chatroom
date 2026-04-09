@@ -92,8 +92,6 @@ class ChatroomController(http.Controller):
 
         return {
             "success": True,
-            "partner_id": room.partner_id.id,
-            "partner_name": room.partner_id.name,
         }
 
     @http.route("/chatroom/room/<int:room_id>/link_record", type="json", auth="user")
@@ -102,11 +100,15 @@ class ChatroomController(http.Controller):
         if not room.exists():
             return {"error": "Room not found"}
 
-        if field_name in ["partner_id"]:
-            room.write({field_name: record_id})
+        _LINK_SINGLE_FIELDS = frozenset()
+        _LINK_M2M_FIELDS = frozenset(["partner_ids"])
 
-        elif field_name.endswith("_ids"):
+        if field_name in _LINK_SINGLE_FIELDS:
+            room.write({field_name: record_id})
+        elif field_name in _LINK_M2M_FIELDS:
             room.write({field_name: [(4, record_id)]})
+        else:
+            return {"error": f"Field '{field_name}' is not allowed"}
 
         return {
             "success": True,
@@ -121,11 +123,15 @@ class ChatroomController(http.Controller):
         if not room.exists():
             return {"error": "Room not found"}
 
-        if field_name in ["partner_id"]:
-            room.write({field_name: False})
+        _UNLINK_SINGLE_FIELDS = frozenset()
+        _UNLINK_M2M_FIELDS = frozenset(["partner_ids"])
 
-        elif field_name.endswith("_ids"):
+        if field_name in _UNLINK_SINGLE_FIELDS:
+            room.write({field_name: False})
+        elif field_name in _UNLINK_M2M_FIELDS:
             room.write({field_name: [(3, record_id)]})
+        else:
+            return {"error": f"Field '{field_name}' is not allowed"}
 
         return {
             "success": True,
@@ -187,7 +193,11 @@ class ChatroomController(http.Controller):
     def get_file(self, attachment_id, **kwargs):
         try:
             attachment = request.env["ir.attachment"].sudo().browse(attachment_id)
-            if not attachment.exists() or not attachment.datas:
+            if (
+                not attachment.exists()
+                or not attachment.datas
+                or attachment.res_model != "chatroom.message"
+            ):
                 return request.not_found()
 
             file_content = base64.b64decode(attachment.datas)

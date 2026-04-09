@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from odoo import fields, models
 
@@ -234,8 +235,6 @@ class ChatroomAIConversation(models.Model):
                 content = msg.get("content", "")
 
                 if msg.get("timestamp") and content and msg.get("role") == "user":
-                    from datetime import datetime
-
                     try:
                         ts = datetime.fromisoformat(msg["timestamp"])
                         time_str = ts.strftime("%Y-%m-%d %H:%M:%S")

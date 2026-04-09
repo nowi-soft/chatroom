@@ -145,7 +145,7 @@ class ChatroomAIProvider(models.Model):
                 "max_tokens" in error_str.lower()
                 and "output limit" in error_str.lower()
             ):
-                _logger.error(f"OpenAI API error (max_tokens limit): {error_str}")
+                _logger.error("OpenAI API error (max_tokens limit): %s", error_str)
                 return {
                     "content": "",
                     "model": model,
@@ -156,7 +156,7 @@ class ChatroomAIProvider(models.Model):
                     },
                     "truncated": True,
                 }
-            _logger.error(f"OpenAI API error: {error_str}")
+            _logger.error("OpenAI API error: %s", error_str)
             raise
 
     def format_tool_for_provider(self, tool):

@@ -146,7 +146,7 @@ class ChatroomAIProvider(models.Model):
             return result
 
         except Exception as e:
-            _logger.error(f"AI completion failed: {str(e)}")
+            _logger.error("AI completion failed: %s", e)
             self.write({"error_message": str(e)})
             raise
 
