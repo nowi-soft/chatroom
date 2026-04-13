@@ -27,7 +27,7 @@ class CrmLead(models.Model):
     def action_view_chatroom_rooms(self):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id(
-            "chatroom.chatroom_room_action"
+            "chatroom.action_chatroom_room"
         )
         action["domain"] = [("id", "in", self.chatroom_room_ids.ids)]
         action["context"] = {

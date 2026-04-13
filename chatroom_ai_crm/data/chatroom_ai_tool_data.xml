@@ -146,18 +146,21 @@ try:
     connector_type = _clean(room.connector_id.connector_type if room and room.connector_id else False).lower()
 
     # Resolve an internal user for CRM writes to avoid Public user ownership.
-    execution_user = False
+    # Do NOT fall back to agent.create_uid — that causes the agent configurator
+    # to appear as the CRM record author in the chatter.
     if room and room.assigned_to_id and not room.assigned_to_id.share:
         execution_user = room.assigned_to_id
-    elif agent and agent.create_uid and not agent.create_uid.share:
-        execution_user = agent.create_uid
     else:
         execution_user = env.ref('base.user_admin')
 
+    # Salesperson: only set when the room is explicitly assigned to an internal user.
+    salesperson_user = False
+    if room and room.assigned_to_id and not room.assigned_to_id.share:
+        salesperson_user = room.assigned_to_id
+
     lead_model = env['crm.lead'].sudo().with_user(execution_user)
-    crm_use_lead = str(
-        env['ir.config_parameter'].sudo().get_param('crm.use_lead', 'False')
-    ).lower() in ('1', 'true', 'yes', 'y', 'on')
+    use_lead_group = env.ref('crm.group_use_lead', raise_if_not_found=False)
+    crm_use_lead = bool(use_lead_group and use_lead_group.users)
     target_type = 'lead' if crm_use_lead else 'opportunity'
 
     room_external_id = _clean(room.external_id if room else False)
@@ -286,18 +289,15 @@ try:
         'hot': '2',
     }
 
-    # Try to find a probable duplicate first.
-    duplicate_domain = [('type', 'in', ['lead', 'opportunity'])]
-    if email:
-        duplicate_domain.append(('email_from', '=', email))
-    elif phone:
-        duplicate_domain.append(('phone', '=', phone))
-    elif contact_name:
-        duplicate_domain.append(('contact_name', 'ilike', contact_name))
-    else:
-        duplicate_domain.append(('name', 'ilike', name))
-
-    existing_lead = lead_model.search(duplicate_domain, limit=1, order='id desc')
+    # Find a lead already linked to this room — prevents double-creation
+    # when the AI calls the tool more than once for the same conversation.
+    existing_lead = None
+    if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
+        existing_lead = lead_model.search(
+            [('chatroom_room_ids', 'in', [room_id]),
+             ('type', 'in', ['lead', 'opportunity'])],
+            limit=1, order='id desc'
+        )
 
     if existing_lead:
         update_vals = {}
@@ -308,10 +308,10 @@ try:
         if phone and not existing_lead.phone:
             update_vals['phone'] = phone
         if (
-            execution_user
+            salesperson_user
             and (not existing_lead.user_id or existing_lead.user_id.share)
         ):
-            update_vals['user_id'] = execution_user.id
+            update_vals['user_id'] = salesperson_user.id
         if description:
             previous = existing_lead.description or ''
             if note_text and note_text not in previous:
@@ -346,7 +346,7 @@ try:
             'contact_name': contact_name or False,
             'email_from': email or False,
             'phone': phone or False,
-            'user_id': execution_user.id if execution_user else False,
+            'user_id': salesperson_user.id if salesperson_user else False,
             'description': note_text,
             'type': target_type,
             'probability': probability_by_temp.get(lead_temperature, 0.0),
@@ -383,7 +383,7 @@ try:
         lead.with_user(execution_user).message_post(
             body=Markup(message_body),
             subject='Lead managed by AI',
-            message_type='notification',
+            message_type='comment',
             subtype_xmlid='mail.mt_note',
             author_id=(
                 execution_user.partner_id.id
@@ -396,6 +396,264 @@ except Exception as e:
     if not result.get('skipped'):
         result['success'] = False
         result['message'] = f'Error creating/updating lead: {str(e)}'</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ai_tool_update_lead" model="chatroom.ai.tool">
+        <field name="name">Update Lead</field>
+        <field name="code_name">update_lead</field>
+        <field
+            name="description"
+        >Update an existing CRM lead/opportunity with new information gathered during the conversation. Use this tool AFTER create_lead has already created the lead for this chat. Do NOT use this to create a new lead — use create_lead for that. Call this when the customer provides additional contact data (phone, email), updates their intent, confirms a next action, or the temperature changes. The lead_id is returned by create_lead; if not available, it will be resolved automatically from the current chat room.</field>
+        <field name="example_usage">[
+    {
+        "when": "Customer provides phone number after lead was already created",
+        "call": {
+            "name": "update_lead",
+            "arguments": {
+                "lead_id": 42,
+                "phone": "5492611234567",
+                "lead_temperature": "hot",
+                "next_action": "Llamar mañana a las 10am"
+            }
+        }
+    },
+    {
+        "when": "Customer confirms they want to proceed — escalate temperature and log next step",
+        "call": {
+            "name": "update_lead",
+            "arguments": {
+                "lead_id": 42,
+                "lead_temperature": "hot",
+                "intent_signal": "Confirmó que quiere avanzar con la propuesta",
+                "next_action": "Enviar presupuesto hoy"
+            }
+        }
+    },
+    {
+        "when": "Lead id is not known — will be resolved from the current room",
+        "call": {
+            "name": "update_lead",
+            "arguments": {
+                "description": "Cliente actualizo que prefiere financiacion a 12 cuotas",
+                "lead_temperature": "warm"
+            }
+        }
+    }
+]</field>
+        <field name="parameters_schema">{
+    "name": "update_lead",
+    "description": "Update an existing CRM lead/opportunity with new data from the conversation",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "lead_id": {
+                "type": "integer",
+                "description": "ID of the lead to update. If omitted, the lead linked to the current chat room will be used."
+            },
+            "name": {
+                "type": "string",
+                "description": "Updated lead title (only if it needs to change)"
+            },
+            "contact_name": {
+                "type": "string",
+                "description": "Contact person name"
+            },
+            "email": {
+                "type": "string",
+                "description": "Email address provided by the customer"
+            },
+            "phone": {
+                "type": "string",
+                "description": "Phone number provided by the customer"
+            },
+            "description": {
+                "type": "string",
+                "description": "New information or updated conversation summary to append"
+            },
+            "intent_signal": {
+                "type": "string",
+                "description": "Updated reason why this lead is commercially qualified"
+            },
+            "lead_temperature": {
+                "type": "string",
+                "description": "Updated lead temperature: warm or hot"
+            },
+            "sentiment_summary": {
+                "type": "string",
+                "description": "Updated customer sentiment summary"
+            },
+            "preferred_contact_time": {
+                "type": "string",
+                "description": "Best time window to contact the customer"
+            },
+            "next_action": {
+                "type": "string",
+                "description": "Next commercial action agreed with customer"
+            }
+        },
+        "required": []
+    }
+}</field>
+        <field name="python_code_source">result = {
+    'success': True,
+    'lead_id': False,
+    'message': '',
+    'updated': False,
+}
+
+try:
+    from markupsafe import Markup
+    import re
+
+    room_id = room.id if room else False
+    agent_id = agent.id if agent else False
+
+    def _clean(value):
+        if value is None:
+            return ''
+        return str(value).strip()
+
+    def _normalize_plain_text(value):
+        text = _clean(value)
+        if not text:
+            return ''
+        text = re.sub(r'&lt;br\s*/?&gt;', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'&lt;/p\s*&gt;', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'&lt;p[^&gt;]*&gt;', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'&lt;[^&gt;]+&gt;', '', text)
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        return '\n'.join(lines)
+
+    lead_id_param = params.get('lead_id')
+    name = _clean(params.get('name'))
+    contact_name = _clean(params.get('contact_name'))
+    email = _clean(params.get('email')).lower()
+    phone = _clean(params.get('phone'))
+    description = _normalize_plain_text(params.get('description'))
+    intent_signal = _normalize_plain_text(params.get('intent_signal'))
+    lead_temperature = _clean(params.get('lead_temperature')).lower()
+    sentiment_summary = _normalize_plain_text(params.get('sentiment_summary'))
+    preferred_contact_time = _normalize_plain_text(params.get('preferred_contact_time'))
+    next_action = _normalize_plain_text(params.get('next_action'))
+
+    # Resolve execution user for write access.
+    # Do NOT fall back to agent.create_uid — that causes the agent configurator
+    # to appear as the CRM record author in the chatter.
+    if room and room.assigned_to_id and not room.assigned_to_id.share:
+        execution_user = room.assigned_to_id
+    else:
+        execution_user = env.ref('base.user_admin')
+
+    lead_model = env['crm.lead'].sudo().with_user(execution_user)
+
+    # Resolve the lead: by explicit ID first, then by room link.
+    target_lead = None
+    if lead_id_param:
+        target_lead = lead_model.browse(int(lead_id_param)).exists()
+
+    if not target_lead and room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
+        target_lead = lead_model.search(
+            [('chatroom_room_ids', 'in', [room_id]),
+             ('type', 'in', ['lead', 'opportunity'])],
+            limit=1, order='id desc'
+        )
+
+    if not target_lead:
+        result['success'] = False
+        result['message'] = (
+            'No lead found to update. Use create_lead first to create a lead for this conversation.'
+        )
+        raise ValueError(result['message'])
+
+    temperature_label_map = {
+        'cold': 'fría',
+        'warm': 'tibia',
+        'hot': 'caliente',
+    }
+
+    def _build_note(base_description):
+        parts = []
+        if base_description:
+            parts.append(base_description)
+        if intent_signal:
+            parts.append(f"Señal de intención: {intent_signal}")
+        if lead_temperature in temperature_label_map:
+            parts.append(f"Temperatura del lead: {temperature_label_map[lead_temperature]}")
+        if sentiment_summary:
+            parts.append(f"Sentimiento: {sentiment_summary}")
+        if preferred_contact_time:
+            parts.append(f"Horario preferido de contacto: {preferred_contact_time}")
+        if next_action:
+            parts.append(f"Próxima acción: {next_action}")
+        return '&lt;br/&gt;'.join(parts).strip()
+
+    note_text = _build_note(description)
+
+    update_vals = {}
+
+    if name and name != target_lead.name:
+        update_vals['name'] = name
+    if contact_name and not target_lead.contact_name:
+        update_vals['contact_name'] = contact_name
+    if email and not target_lead.email_from:
+        update_vals['email_from'] = email
+    if phone and not target_lead.phone:
+        update_vals['phone'] = phone
+    if note_text:
+        previous = target_lead.description or ''
+        if note_text not in previous:
+            update_vals['description'] = f"{previous}\n\n[AI update]\n{note_text}".strip()
+
+    probability_by_temp = {'warm': 40.0, 'hot': 70.0}
+    priority_by_temp = {'warm': '1', 'hot': '2'}
+
+    if lead_temperature in probability_by_temp:
+        current_probability = target_lead.probability or 0.0
+        target_probability = probability_by_temp[lead_temperature]
+        if target_probability > current_probability:
+            update_vals['probability'] = target_probability
+
+        target_priority = priority_by_temp[lead_temperature]
+        if (target_lead.priority or '0') &lt; target_priority:
+            update_vals['priority'] = target_priority
+
+    if update_vals:
+        target_lead.write(update_vals)
+
+    # Ensure room link exists.
+    if room_id and 'chatroom_room_ids' in env['crm.lead']._fields:
+        target_lead.write({'chatroom_room_ids': [(4, room_id)]})
+
+    result['lead_id'] = target_lead.id
+    result['updated'] = True
+    result['message'] = f'Lead updated successfully (ID: {target_lead.id})'
+
+    # Post chatter note.
+    if agent_id:
+        agent_rec = env['chatroom.ai.agent'].browse(agent_id)
+        chat_url = f"/web#action=chatroom.action_chatroom_app&amp;room_id={room_id}"
+        message_body = (
+            f'&lt;p&gt;Lead updated by AI agent &lt;strong&gt;{agent_rec.name}&lt;/strong&gt; '
+            f'from the chat conversation.&lt;/p&gt;'
+            f'&lt;p&gt;&lt;a href="{chat_url}" target="_blank"&gt;View source chat&lt;/a&gt;&lt;/p&gt;'
+        )
+        target_lead.with_user(execution_user).message_post(
+            body=Markup(message_body),
+            subject='Lead updated by AI',
+            message_type='comment',
+            subtype_xmlid='mail.mt_note',
+            author_id=(
+                execution_user.partner_id.id
+                if execution_user and execution_user.partner_id
+                else False
+            ),
+        )
+
+except Exception as e:
+    if not result.get('updated'):
+        result['success'] = False
+        result['message'] = f'Error updating lead: {str(e)}'</field>
         <field name="active">True</field>
     </record>
 </odoo>
