@@ -48,6 +48,11 @@ class ChatroomAITool(models.Model):
 
     @api.constrains("code_name")
     def _check_code_name(self):
+        for tool in self:
+            if not tool.code_name:
+                raise UserError(self.env._("Tool code name is required."))
+
+    def get_tool_definition(self):
         self.ensure_one()
 
         try:
