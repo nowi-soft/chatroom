@@ -9,7 +9,6 @@
     "depends": ["chatroom"],
     "data": [
         "data/chatroom_demo.xml",
-        "views/chatroom_simulator_views.xml",
     ],
     "installable": True,
     "application": False,

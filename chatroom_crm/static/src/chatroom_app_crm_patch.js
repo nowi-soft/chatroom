@@ -38,6 +38,16 @@ patch(ChatroomApp.prototype, {
         return tabs;
     },
 
+    async selectChat(room) {
+        await super.selectChat(...arguments);
+        await this.loadLinkedLeadIds(room?.id);
+    },
+
+    async restoreRoom() {
+        await super.restoreRoom(...arguments);
+        await this.loadLinkedLeadIds(this.state.currentRoom?.id);
+    },
+
     async loadLinkedLeadIds(roomId) {
         if (!roomId) {
             this.state.linkedLeadIds = [];

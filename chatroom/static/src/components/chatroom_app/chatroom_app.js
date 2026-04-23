@@ -182,7 +182,6 @@ export class ChatroomApp extends Component {
         this.state.currentRoom = room;
         await this.loadMessages(room.id);
         await this.loadRelatedRecords(room.id);
-        await this.loadLinkedLeadIds(room.id);
 
         router.pushState({room_id: room.id});
 
@@ -206,7 +205,6 @@ export class ChatroomApp extends Component {
                 this.state.currentRoom = room;
                 await this.loadMessages(room.id);
                 await this.loadRelatedRecords(room.id);
-                await this.loadLinkedLeadIds(room.id);
                 setTimeout(() => {
                     this.scrollToBottom();
                 }, 100);
