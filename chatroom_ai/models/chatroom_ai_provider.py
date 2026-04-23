@@ -55,15 +55,23 @@ class ChatroomAIProvider(models.Model):
         default="draft",
     )
     error_message = fields.Text("Last Error")
-    total_requests = fields.Integer(default=0, readonly=True)
-    total_tokens_used = fields.Integer(default=0, readonly=True)
-    last_request_date = fields.Datetime(readonly=True)
+
+    available_models = fields.Text(
+        readonly=True,
+        help="List of models available for this provider. Click 'Fetch Models' to refresh.",  # noqa: E501
+    )
 
     extra_config = fields.Json()
 
     @api.model
     def _get_provider_implementation(self, provider_type):
         return None
+
+    def action_fetch_models(self):
+        self.ensure_one()
+        raise UserError(
+            self.env._("Fetching models is not supported for this provider type.")
+        )
 
     def action_test_connection(self):
         self.ensure_one()
@@ -131,16 +139,6 @@ class ChatroomAIProvider(models.Model):
                 max_tokens=max_tokens,
                 tools=tools,
                 **kwargs,
-            )
-
-            usage = result.get("usage", {})
-            self.sudo().write(
-                {
-                    "total_requests": self.total_requests + 1,
-                    "total_tokens_used": self.total_tokens_used
-                    + usage.get("total_tokens", 0),
-                    "last_request_date": fields.Datetime.now(),
-                }
             )
 
             return result

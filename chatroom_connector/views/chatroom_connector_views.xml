@@ -14,34 +14,6 @@
                     <field name="state" widget="statusbar" />
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button
-                            name="%(chatroom.action_chatroom_room)d"
-                            type="action"
-                            class="oe_stat_button"
-                            icon="fa-comments"
-                            context="{'search_default_connector_id': id}"
-                        >
-                            <field
-                                name="messages_received"
-                                widget="statinfo"
-                                string="Received"
-                            />
-                        </button>
-                        <button
-                            name="%(chatroom.action_chatroom_room)d"
-                            type="action"
-                            class="oe_stat_button"
-                            icon="fa-paper-plane"
-                            context="{'search_default_connector_id': id}"
-                        >
-                            <field
-                                name="messages_sent"
-                                widget="statinfo"
-                                string="Sent"
-                            />
-                        </button>
-                    </div>
                     <widget
                         name="web_ribbon"
                         title="Inactive"
@@ -57,7 +29,6 @@
                     <group>
                         <group>
                             <field name="connector_type" />
-                            <field name="last_sync" readonly="1" />
                         </group>
                         <group>
                             <field
@@ -67,21 +38,10 @@
                             />
                         </group>
                     </group>
-
                     <notebook>
-                        <page string="Status" name="status">
-                            <group>
-                                <group>
-                                    <field name="messages_sent" readonly="1" />
-                                    <field name="messages_received" readonly="1" />
-                                </group>
-                                <group>
-                                    <field
-                                        name="error_message"
-                                        readonly="1"
-                                        invisible="not error_message"
-                                    />
-                                </group>
+                        <page string="Status" name="status" invisible="1">
+                            <group invisible="not error_message">
+                                <field name="error_message" readonly="1" />
                             </group>
                         </page>
                     </notebook>
@@ -103,9 +63,6 @@
                     decoration-success="state == 'active'"
                     decoration-danger="state == 'error'"
                 />
-                <field name="messages_received" />
-                <field name="messages_sent" />
-                <field name="last_sync" />
             </list>
         </field>
     </record>

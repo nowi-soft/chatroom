@@ -10,24 +10,6 @@
                     add="provider_type == 'openai' and 'gpt-4, gpt-4-turbo-preview, gpt-3.5-turbo' or ''"
                 />
             </xpath>
-
-            <xpath expr="//field[@name='organization_id']" position="attributes">
-                <attribute name="invisible">provider_type != 'openai'</attribute>
-            </xpath>
-
-            <xpath expr="//group[@name='extra_info']" position="inside">
-                <group
-                    string="OpenAI Specific Settings"
-                    invisible="provider_type != 'openai'"
-                >
-                    <field
-                        name="extra_config"
-                        widget="code"
-                        options="{'mode': 'javascript'}"
-                        placeholder='{"seed": null, "top_p": 1.0}'
-                    />
-                </group>
-            </xpath>
         </field>
     </record>
 </odoo>

@@ -28,7 +28,6 @@ class TestAIToolWizard(TransactionCase):
                 "code_name": "wizard_tool",
                 "description": "desc",
                 "parameters_schema": '{"type": "object"}',
-                "implementation_type": "python",
                 "python_code": "result = {'success': True, 'from_wizard': True}",
             }
         )

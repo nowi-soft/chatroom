@@ -1,4 +1,6 @@
+import json
 import logging
+from datetime import datetime
 
 from odoo import api, fields, models
 
@@ -25,11 +27,6 @@ class ChatroomRoom(models.Model):
         default=False,
         help="Enable AI auto-responses for this chat",
     )
-    ai_conversation_ids = fields.One2many(
-        "chatroom.ai.conversation",
-        "room_id",
-        string="AI Conversations",
-    )
     ai_conversation_state = fields.Selection(
         [
             ("active", "Active"),
@@ -39,22 +36,17 @@ class ChatroomRoom(models.Model):
             ("testing", "Testing"),
         ],
         string="AI Status",
-        compute="_compute_ai_conversation_state",
-        readonly=True,
+        default="active",
     )
-
-    @api.depends("ai_conversation_ids.state")
-    def _compute_ai_conversation_state(self):
-        for room in self:
-            active_conv = room.ai_conversation_ids.filtered(
-                lambda c: c.state == "active"
-            )[:1]
-            if active_conv:
-                room.ai_conversation_state = active_conv.state
-            elif room.ai_conversation_ids:
-                room.ai_conversation_state = room.ai_conversation_ids[0].state
-            else:
-                room.ai_conversation_state = False
+    ai_context_messages = fields.Text(
+        "AI Context (JSON)",
+        help="Rolling window of conversation messages in OpenAI format",
+    )
+    ai_summary = fields.Text(
+        "AI Conversation Summary",
+        help="Summary of older messages trimmed from the context window",
+    )
+    ai_error_message = fields.Text()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -81,12 +73,8 @@ class ChatroomRoom(models.Model):
 
         if not self.ai_agent_id:
             agent = self.env["chatroom.ai.agent"].search(
-                [
-                    ("active", "=", True),
-                ],
-                limit=1,
+                [("active", "=", True)], limit=1
             )
-
             if agent:
                 self.ai_agent_id = agent
 
@@ -94,6 +82,7 @@ class ChatroomRoom(models.Model):
             {
                 "ai_enabled": True,
                 "needs_attention": False,
+                "ai_conversation_state": "active",
             }
         )
 
@@ -111,11 +100,12 @@ class ChatroomRoom(models.Model):
 
     def action_disable_ai(self):
         self.ensure_one()
-        self.ai_enabled = False
-
-        active_convs = self.ai_conversation_ids.filtered(lambda c: c.state == "active")
-        active_convs.write({"state": "paused"})
-
+        self.write(
+            {
+                "ai_enabled": False,
+                "ai_conversation_state": "paused",
+            }
+        )
         self._notify_ai_state_change()
 
         return {
@@ -125,18 +115,6 @@ class ChatroomRoom(models.Model):
                 "message": "AI Agent disabled for this chat",
                 "type": "info",
             },
-        }
-
-    def action_view_ai_conversations(self):
-        self.ensure_one()
-
-        return {
-            "type": "ir.actions.act_window",
-            "name": "AI Conversations",
-            "res_model": "chatroom.ai.conversation",
-            "view_mode": "list,form",
-            "domain": [("room_id", "=", self.id)],
-            "context": {"default_room_id": self.id},
         }
 
     def write(self, vals):
@@ -240,18 +218,236 @@ class ChatroomRoom(models.Model):
                     },
                 )
 
-    def action_pause_ai_and_request_attention(self):
+    def _load_context(self):
+        self.ensure_one()
+        try:
+            return (
+                json.loads(self.ai_context_messages) if self.ai_context_messages else []
+            )
+        except (json.JSONDecodeError, ValueError) as e:
+            _logger.warning("Failed to parse AI conversation context: %s", e)
+            return []
+
+    def has_tool_call_result(self, tool_call_id):
+        self.ensure_one()
+        if not tool_call_id:
+            return False
+        context = self._load_context()
+        for msg in context:
+            if msg.get("role") == "tool" and msg.get("tool_call_id") == tool_call_id:
+                return True
+        return False
+
+    def get_tool_call_result(self, tool_call_id):
+        self.ensure_one()
+        if not tool_call_id:
+            return None
+        context = self._load_context()
+        for msg in context:
+            if msg.get("role") == "tool" and msg.get("tool_call_id") == tool_call_id:
+                raw_content = msg.get("content")
+                if isinstance(raw_content, dict):
+                    return raw_content
+                if isinstance(raw_content, str):
+                    try:
+                        return json.loads(raw_content)
+                    except (json.JSONDecodeError, ValueError):
+                        return {"raw": raw_content}
+                return raw_content
+        return None
+
+    def _build_channel_context_block(self):
         self.ensure_one()
 
-        if self.ai_conversation_ids:
-            active_convs = self.ai_conversation_ids.filtered(
-                lambda c: c.state == "active"
+        connector = self.connector_id
+        connector_type = (
+            (connector.connector_type or "unknown").lower() if connector else "unknown"
+        )
+        external_id = self.external_id or ""
+
+        lines = ["=== CHANNEL CONTEXT ==="]
+        lines.append(f"- Connector type: {connector_type}")
+        if external_id:
+            lines.append(f"- Channel external_id: {external_id}")
+
+        if connector_type == "evolution":
+            lines.append(
+                "- External ID usually maps to WhatsApp phone. "
+                "Avoid asking phone again unless strictly required."
             )
-            active_convs.write({"state": "paused"})
+            lines.append(
+                "- If needed, confirm contact data briefly "
+                "instead of re-collecting from scratch."
+            )
+        elif connector_type == "telegram":
+            lines.append(
+                "- External ID is Telegram chat/user ID, not a guaranteed phone number."
+            )
+            lines.append(
+                "- Ask for phone only if truly necessary for the next business action."
+            )
+        else:
+            lines.append(
+                "- Do not assume external_id is a phone number; "
+                "validate contact data only when needed."
+            )
+
+        partner_names = []
+        if hasattr(self, "partner_ids") and self.partner_ids:
+            partner_names = [p.name for p in self.partner_ids if p.name]
+        if partner_names:
+            lines.append(f"- Linked contacts in Odoo: {', '.join(partner_names)}")
+
+        lines.append(
+            "- Keep questions minimal and action-oriented; "
+            "avoid repeating data already available in metadata."
+        )
+
+        return "\n".join(lines)
+
+    def add_message(self, message):
+        self.ensure_one()
+
+        if message.is_internal:
+            return
+
+        context = self._load_context()
+        role = "assistant" if message.direction == "outgoing" else "user"
+
+        existing_ids = [msg.get("message_id") for msg in context]
+        if message.id in existing_ids:
+            _logger.debug(
+                "Message ID=%d already in AI context for room ID=%d",
+                message.id,
+                self.id,
+            )
+            return
+
+        context.append(
+            {
+                "role": role,
+                "content": message.body,
+                "timestamp": message.create_date.isoformat()
+                if message.create_date
+                else None,
+                "message_id": message.id,
+            }
+        )
+
+        max_length = (
+            (self.ai_agent_id.max_conversation_length or 20) if self.ai_agent_id else 20
+        )
+        if len(context) > max_length:
+            old_messages = context[:-max_length]
+            context = context[-max_length:]
+            self.ai_summary = f"Previous {len(old_messages)} messages summarized."
+
+        self.write({"ai_context_messages": json.dumps(context)})
+
+    def build_context_messages(self):
+        self.ensure_one()
+
+        messages = []
+
+        temporal_instructions = """IMPORTANT CONTEXT RULES:
+- Each message below includes a timestamp [YYYY-MM-DD HH:MM:SS]
+- This is an ongoing conversation - messages are historical context
+- Do NOT greet the user again if you already greeted them in previous messages
+- Only respond to the most recent message
+- Reference previous context when relevant
+
+"""
+
+        channel_context = self._build_channel_context_block()
+
+        system_content = (
+            temporal_instructions
+            + channel_context
+            + "\n\n"
+            + (self.ai_agent_id.system_prompt or "")
+        )
+
+        if self.ai_agent_id and self.ai_agent_id.knowledge_ids:
+            knowledge_content = "\n\n=== KNOWLEDGE BASE ===\n\n"
+            for knowledge in self.ai_agent_id.knowledge_ids:
+                knowledge_content += knowledge.get_formatted_content()
+            system_content += "\n\n" + knowledge_content
+
+        if self.ai_summary:
+            system_content += f"\n\n=== CONVERSATION SUMMARY ===\n{self.ai_summary}\n"
+
+        messages.append({"role": "system", "content": system_content})
+
+        try:
+            context = self._load_context()
+            for msg in context:
+                content = msg.get("content", "")
+
+                if msg.get("timestamp") and content and msg.get("role") == "user":
+                    try:
+                        ts = datetime.fromisoformat(msg["timestamp"])
+                        time_str = ts.strftime("%Y-%m-%d %H:%M:%S")
+                        content = f"[{time_str}] {content}"
+                    except (ValueError, AttributeError) as e:
+                        _logger.debug("Could not parse timestamp: %s", e)
+
+                message = {"role": msg["role"], "content": content}
+
+                if "tool_calls" in msg:
+                    message["tool_calls"] = msg["tool_calls"]
+                if "tool_call_id" in msg:
+                    message["tool_call_id"] = msg["tool_call_id"]
+
+                messages.append(message)
+        except (json.JSONDecodeError, ValueError) as e:
+            _logger.warning("Failed to parse AI context messages: %s", e)
+
+        return messages
+
+    def add_assistant_message_with_tools(self, content, tool_calls):
+        self.ensure_one()
+
+        context = self._load_context()
+        assistant_msg = {"role": "assistant", "content": content or ""}
+        if tool_calls:
+            assistant_msg["tool_calls"] = tool_calls
+
+        context.append(assistant_msg)
+        self.write({"ai_context_messages": json.dumps(context)})
+
+    def add_tool_results(self, tool_results):
+        self.ensure_one()
+
+        context = self._load_context()
+        existing_tool_ids = {
+            msg.get("tool_call_id")
+            for msg in context
+            if msg.get("role") == "tool" and msg.get("tool_call_id")
+        }
+
+        for tool_result in tool_results:
+            tool_call_id = tool_result.get("id", "call_" + str(len(context)))
+            if tool_call_id in existing_tool_ids:
+                continue
+
+            context.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": json.dumps(tool_result.get("result", {})),
+                }
+            )
+            existing_tool_ids.add(tool_call_id)
+
+        self.write({"ai_context_messages": json.dumps(context)})
+
+    def action_pause_ai_and_request_attention(self):
+        self.ensure_one()
 
         self.write(
             {
                 "ai_enabled": False,
+                "ai_conversation_state": "paused",
                 "state": "unassigned",
                 "needs_attention": True,
             }

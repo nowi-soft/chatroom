@@ -6,6 +6,7 @@ import tempfile
 import openai
 
 from odoo import fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -260,3 +261,62 @@ class ChatroomAIProvider(models.Model):
                 f"OpenAI Whisper transcription error: {str(e)}", exc_info=True
             )
             return None
+
+    def action_fetch_models(self):
+        if self.provider_type != "openai":
+            return super().action_fetch_models()
+
+        try:
+            client = openai.OpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base_url if self.api_base_url else None,
+                organization=self.organization_id if self.organization_id else None,
+            )
+
+            # Prefixes/substrings that identify non-chat models
+            _EXCLUDE = (
+                "whisper",
+                "tts",
+                "dall-e",
+                "embedding",
+                "davinci",
+                "babbage",
+                "ada",
+                "text-search",
+                "text-similarity",
+                "code-search",
+                "realtime",
+                "audio",
+                "moderation",
+                "omni-mini",
+            )
+
+            models = client.models.list()
+            chat_models = sorted(
+                [
+                    m.id
+                    for m in models.data
+                    if not any(ex in m.id.lower() for ex in _EXCLUDE)
+                ]
+            )
+
+            self.available_models = "\n".join(chat_models) if chat_models else ""
+
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "message": self.env._("%d models loaded.", len(chat_models)),
+                    "type": "success",
+                    "sticky": False,
+                },
+            }
+
+        except ImportError as e:
+            raise UserError(
+                self.env._(
+                    "openai package not installed. Install with: pip install openai"
+                )
+            ) from e
+        except Exception as e:
+            raise UserError(self.env._("Failed to fetch models: %s", str(e))) from e

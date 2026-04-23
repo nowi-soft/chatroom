@@ -6,7 +6,6 @@
             <search>
                 <field name="name" />
                 <field name="code_name" />
-                <field name="implementation_type" />
                 <separator />
                 <filter
                     string="Active"
@@ -30,9 +29,6 @@
                 <field name="sequence" widget="handle" />
                 <field name="name" />
                 <field name="code_name" />
-                <field name="implementation_type" />
-                <field name="execution_count" />
-                <field name="last_execution" />
             </list>
         </field>
     </record>
@@ -62,11 +58,6 @@
                                 name="code_name"
                                 placeholder="e.g., create_lead, send_email"
                             />
-                            <field name="implementation_type" widget="radio" />
-                        </group>
-                        <group>
-                            <field name="execution_count" />
-                            <field name="last_execution" />
                         </group>
                     </group>
 
@@ -88,59 +79,11 @@
                         </page>
 
                         <page string="Implementation" name="implementation">
-                            <group invisible="implementation_type != 'python'">
-                                <div class="d-flex justify-content-end">
-                                    <button
-                                        name="action_copy_source_to_implementation"
-                                        type="object"
-                                        class="btn btn-secondary"
-                                        icon="fa-copy"
-                                        title="Copy source into implementation"
-                                        confirm="This will replace the current code in Implementation. Any changes there will be lost. Do you want to continue?"
-                                    />
-                                </div>
-                                <field
-                                    name="python_code"
-                                    widget="code"
-                                    options="{'mode': 'python'}"
-                                    nolabel="1"
-                                />
-                            </group>
-
-                            <group invisible="implementation_type != 'model_method'">
-                                <field name="model_id" />
-                                <field name="method_name" />
-                            </group>
-
-                            <group invisible="implementation_type != 'server_action'">
-                                <field name="server_action_id" />
-                            </group>
-                        </page>
-
-                        <page
-                            string="Module Source"
-                            name="module_source"
-                            invisible="implementation_type != 'python'"
-                        >
                             <field
-                                name="python_code_source"
+                                name="python_code"
                                 widget="code"
                                 options="{'mode': 'python'}"
                                 nolabel="1"
-                                readonly="1"
-                            />
-                        </page>
-
-                        <page
-                            string="Source vs Implementation"
-                            name="source_diff"
-                            invisible="implementation_type != 'python'"
-                        >
-                            <field
-                                name="python_code_diff_html"
-                                widget="html"
-                                nolabel="1"
-                                readonly="1"
                             />
                         </page>
 

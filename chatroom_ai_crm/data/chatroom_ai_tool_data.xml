@@ -4,47 +4,46 @@
         <field name="code_name">create_lead</field>
         <field
             name="description"
-        >Create or update a CRM lead only when there is a real commercial signal. Before calling this tool, classify the lead temperature as cold/warm/hot. Do not create leads for cold conversations or casual questions without concrete follow-up intent. Create/update only when warm/hot and there is actionable contact/progression data. For WhatsApp/Evolution channels the phone number is usually resolved automatically from the channel metadata. If it is not available and the customer has not provided it during the conversation, ask for it before calling this tool.</field>
+        >Create or update a CRM lead/opportunity when there is a real commercial signal. Follow the lead threshold rules configured in your system prompt. Before calling this tool, classify the lead temperature: cold (browsing/informational), warm (specific product/price interest), hot (clear intent to buy, pay, schedule or advance). Never create cold leads. For warm/hot signals, call this tool as soon as you have enough context — do not wait for all data. The phone number is often resolved automatically for WhatsApp/Evolution channels from the channel metadata. If not available and relevant, ask for it naturally during the conversation before calling.</field>
         <field name="example_usage">[
     {
-        "when": "WhatsApp prospect shows commercial intent but phone not yet known",
+        "when": "Customer shows commercial intent (any industry) but phone not yet known",
         "steps": [
-            "Ask: '¿Me podés compartir tu número de teléfono para que te contactemos?'",
-            "Wait for customer reply with phone number",
-            "Then call create_lead with the phone they provided"
+            "Ask naturally: '¿Me podés compartir tu nombre y número de teléfono para que te contactemos?'",
+            "Wait for customer reply",
+            "Then call create_lead with the data they provided"
         ],
         "call": {
             "name": "create_lead",
             "arguments": {
-                "name": "Interesado en Yamaha FZ - financiacion",
-                "contact_name": "Martin",
+                "name": "Interesado en [producto/servicio] - quiere avanzar",
+                "contact_name": "Nombre del cliente",
                 "phone": "5491122334455",
-                "description": "Cliente quiere financiacion para Yamaha FZ y pide avanzar hoy.",
-                "intent_signal": "Pidio avanzar con propuesta de financiacion",
+                "description": "Resumen de lo que necesita el cliente y el contexto de la conversación.",
+                "intent_signal": "Pidió avanzar / pidió precio de producto específico",
                 "lead_temperature": "hot",
                 "sentiment_summary": "Motivado, listo para avanzar",
-                "next_action": "Enviar propuesta y llamar en el dia"
+                "next_action": "Contactar para coordinar siguiente paso"
             }
         }
     },
     {
-        "when": "WhatsApp prospect shows commercial intent and already gave phone in conversation",
+        "when": "Customer asks about price or specific product (warm signal)",
         "call": {
             "name": "create_lead",
             "arguments": {
-                "name": "Interesado en Honda XR300",
-                "contact_name": "Franco",
-                "phone": "5492611234567",
-                "description": "Cliente interesado en XR300, quiere prueba de manejo mañana.",
-                "intent_signal": "Agendo prueba de manejo para mañana",
-                "lead_temperature": "hot",
-                "next_action": "Confirmar turno prueba de manejo"
+                "name": "Consulta sobre [producto/servicio específico]",
+                "contact_name": "Cliente",
+                "description": "Preguntó por precio y disponibilidad de [producto]. Está evaluando opciones.",
+                "intent_signal": "Consultó precio de producto específico",
+                "lead_temperature": "warm",
+                "next_action": "Dar seguimiento con propuesta"
             }
         }
     },
     {
-        "when": "Telegram user only asks general info and no follow-up intent",
-        "call": "Do not call create_lead yet"
+        "when": "Customer only asks general/informational questions with no purchase signal",
+        "call": "Do not call create_lead. Continue the conversation until a commercial signal appears."
     }
 ]</field>
         <field name="parameters_schema">{
@@ -97,7 +96,7 @@
         "required": ["name"]
     }
 }</field>
-        <field name="python_code_source">result = {
+        <field name="python_code">result = {
     'success': True,
     'lead_id': False,
     'message': '',
@@ -159,8 +158,7 @@ try:
         salesperson_user = room.assigned_to_id
 
     lead_model = env['crm.lead'].sudo().with_user(execution_user)
-    use_lead_group = env.ref('crm.group_use_lead', raise_if_not_found=False)
-    crm_use_lead = bool(use_lead_group and use_lead_group.users)
+    crm_use_lead = env.user.has_group('crm.group_use_lead')
     target_type = 'lead' if crm_use_lead else 'opportunity'
 
     room_external_id = _clean(room.external_id if room else False)
@@ -193,17 +191,9 @@ try:
         if base_description:
             parts.append(base_description)
         if intent_signal:
-            parts.append(f"Señal de intención: {intent_signal}")
-        if lead_temperature:
-            temp_label = temperature_label_map.get(lead_temperature, lead_temperature)
-            parts.append(f"Temperatura del lead: {temp_label}")
-        if sentiment_summary:
-            parts.append(f"Sentimiento: {sentiment_summary}")
-        if preferred_contact_time:
-            parts.append(f"Horario preferido de contacto: {preferred_contact_time}")
+            parts.append(f"Señal: {intent_signal}")
         if next_action:
             parts.append(f"Próxima acción: {next_action}")
-        # crm.lead.description is HTML-friendly in many setups; use visible line breaks.
         return '&lt;br/&gt;'.join(parts).strip()
 
     note_text = _build_note(description)
@@ -219,21 +209,47 @@ try:
     explicit_create = any(
         token in joined_text
         for token in [
+            # Generic intent signals (any business)
             'crear lead',
             'create lead',
             'contactame',
             'contáctame',
             'llamame',
             'llámame',
+            'escribime',
             'cotizacion',
             'cotización',
+            'presupuesto',
             'financiacion',
             'financiación',
-            'test ride',
-            'prueba de manejo',
+            'cuotas',
+            'credito',
+            'crédito',
+            # Purchase / booking intent
             'comprar',
-            'señar',
+            'adquirir',
+            'abonar',
+            'pagar',
             'reserva',
+            'separar',
+            'apartar',
+            # Service / appointment intent
+            'turno',
+            'cita',
+            'agendar',
+            'visita',
+            'prueba de producto',
+            'prueba de manejo',
+            # Progression signals
+            'quiero avanzar',
+            'quiero proceder',
+            'como sigo',
+            'cómo sigo',
+            'cuando puedo',
+            'cuándo puedo',
+            'quiero uno',
+            'me lo llevo',
+            'me interesa',
         ]
     )
     has_contact_data = bool(contact_name or email or phone)
@@ -313,11 +329,7 @@ try:
         ):
             update_vals['user_id'] = salesperson_user.id
         if description:
-            previous = existing_lead.description or ''
-            if note_text and note_text not in previous:
-                update_vals['description'] = (
-                    f"{previous}\n\n[AI update]\n{note_text}".strip()
-                )
+            update_vals['description'] = note_text
 
         if update_vals:
             existing_lead.write(update_vals)
@@ -495,7 +507,7 @@ except Exception as e:
         "required": []
     }
 }</field>
-        <field name="python_code_source">result = {
+        <field name="python_code">result = {
     'success': True,
     'lead_id': False,
     'message': '',
@@ -577,13 +589,7 @@ try:
         if base_description:
             parts.append(base_description)
         if intent_signal:
-            parts.append(f"Señal de intención: {intent_signal}")
-        if lead_temperature in temperature_label_map:
-            parts.append(f"Temperatura del lead: {temperature_label_map[lead_temperature]}")
-        if sentiment_summary:
-            parts.append(f"Sentimiento: {sentiment_summary}")
-        if preferred_contact_time:
-            parts.append(f"Horario preferido de contacto: {preferred_contact_time}")
+            parts.append(f"Señal: {intent_signal}")
         if next_action:
             parts.append(f"Próxima acción: {next_action}")
         return '&lt;br/&gt;'.join(parts).strip()
@@ -601,9 +607,7 @@ try:
     if phone and not target_lead.phone:
         update_vals['phone'] = phone
     if note_text:
-        previous = target_lead.description or ''
-        if note_text not in previous:
-            update_vals['description'] = f"{previous}\n\n[AI update]\n{note_text}".strip()
+        update_vals['description'] = note_text
 
     probability_by_temp = {'warm': 40.0, 'hot': 70.0}
     priority_by_temp = {'warm': '1', 'hot': '2'}

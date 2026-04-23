@@ -3,8 +3,7 @@ import logging
 
 import requests
 
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -24,63 +23,8 @@ class ChatroomAIAgent(models.Model):
         required=True,
         domain=[("state", "=", "active")],
     )
-    model = fields.Char(
-        string="Model Override",
-        help="Leave empty to use provider's default model",
-    )
-    temperature = fields.Float(
-        help="Leave 0 to use provider's default",
-    )
-    max_tokens = fields.Integer(
-        help="Leave 0 to use provider's default, min 500",
-    )
-
-    @api.constrains("max_tokens")
-    def _check_max_tokens(self):
-        for record in self:
-            if record.max_tokens < 0:
-                raise ValidationError(self.env._("Max tokens cannot be negative."))
-            if 0 < record.max_tokens < 500:
-                raise ValidationError(
-                    self.env._(
-                        "Max tokens must be at least 500 or 0 to use provider default."
-                    )
-                )
-
     system_prompt = fields.Text(
         required=True,
-        default="""
-    You are a human-like sales assistant for a Honda dealership in Mendoza.
-
-Conversation rules:
-- Sound natural, warm, and concise.
-- Ask only one simple question per turn.
-- If user says only hello, greet naturally and ask an open help question
-    (for example: "En que te puedo ayudar hoy?").
-- Do not force product-category questions in the first turn
-    (avoid "moto o cuatriciclo?" as default opener).
-- Do not send long questionnaires.
-- Ask only actionable questions that lead to an immediate next step.
-- Do not ask for preferred contact time by default.
-- Only ask preferred contact time if the customer offers it
-    or if a real handoff is blocked without it.
-- If channel metadata already identifies contact (e.g., WhatsApp),
-    avoid asking phone again unless strictly required.
-- Do not mention AI, tools, internal processes, lead IDs, or backend actions.
-- Mentally classify lead temperature in each turn: cold, warm, hot.
-
-Sales flow:
-- Understand the need first, then recommend.
-- Mention financing/test ride only when relevant.
-- Use create_lead only with clear commercial intent.
-- Never create a lead when temperature is cold.
-- Create/update lead when warm/hot and there is
-    actionable contact/progression data.
-- After creating/updating a lead, confirm briefly and close naturally
-    without adding extra questions unless a critical contact datum is missing.
-
-Always maintain conversation context from previous messages.
-""",
         help="Core instructions that define the agent's behavior and personality",
     )
 
@@ -112,49 +56,12 @@ Always maintain conversation context from previous messages.
     )
 
     unsupported_media_message = fields.Text(
-        default=(
-            "I'm sorry, but I cannot process images, files, or videos "
-            "at this time. Please describe what you need in text, and "
-            "I'll be happy to help you."
-        ),
+        required=True,
         help=(
             "Message sent when the agent receives an image, file, or "
             "video that it cannot process"
         ),
-        required=True,
     )
-
-    total_responses = fields.Integer(default=0, readonly=True)
-    total_tool_executions = fields.Integer(default=0, readonly=True)
-    last_response_date = fields.Datetime(string="Last Response", readonly=True)
-
-    conversation_ids = fields.One2many(
-        "chatroom.ai.conversation",
-        "agent_id",
-        string="Conversations",
-    )
-    conversation_count = fields.Integer(
-        compute="_compute_conversation_count",
-    )
-
-    @api.depends("conversation_ids")
-    def _compute_conversation_count(self):
-        for agent in self:
-            agent.conversation_count = len(agent.conversation_ids)
-
-    def action_view_conversations(self):
-        self.ensure_one()
-        return {
-            "type": "ir.actions.act_window",
-            "name": "Agent Conversations",
-            "res_model": "chatroom.ai.conversation",
-            "view_mode": "list,form",
-            "domain": [("agent_id", "=", self.id)],
-            "context": {
-                "default_agent_id": self.id,
-                "search_default_active": 1,
-            },
-        }
 
     def should_respond_to_room(self, room):
         self.ensure_one()
@@ -164,28 +71,17 @@ Always maintain conversation context from previous messages.
 
         return not room.assigned_to_id
 
-    def get_or_create_conversation(self, room):
+    def action_open_setup_wizard(self):
         self.ensure_one()
-
-        conversation = self.env["chatroom.ai.conversation"].search(
-            [
-                ("agent_id", "=", self.id),
-                ("room_id", "=", room.id),
-                ("state", "=", "active"),
-            ],
-            limit=1,
+        return self.env["chatroom.ai.agent.setup.session"].action_start_setup(
+            agent_id=self.id
         )
 
-        if not conversation:
-            conversation = self.env["chatroom.ai.conversation"].create(
-                {
-                    "agent_id": self.id,
-                    "room_id": room.id,
-                    "state": "active",
-                }
-            )
-
-        return conversation
+    def get_or_create_conversation(self, room):
+        self.ensure_one()
+        if room.ai_conversation_state not in ("active", "testing"):
+            room.write({"ai_conversation_state": "active"})
+        return room
 
     def _transcribe_audio(self, message):
         self.ensure_one()
@@ -223,16 +119,34 @@ Always maintain conversation context from previous messages.
 
         return None
 
-    def _generate_and_send_response(self, conversation_id):
-        conversation = self.env["chatroom.ai.conversation"].browse(conversation_id)
-        if not conversation.exists():
+    @staticmethod
+    def _convert_ai_response_to_html(text):
+        if not text:
+            return text
+        import re
+
+        text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text, flags=re.DOTALL)
+        text = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<em>\1</em>", text)
+        text = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", text)
+        lines = text.split("\n")
+        deduped = []
+        for line in lines:
+            if deduped and line.strip() and line.strip() == deduped[-1].strip():
+                continue
+            deduped.append(line)
+        text = "\n".join(deduped)
+        text = text.replace("\n", "<br/>")
+        return text
+
+    def _generate_and_send_response(self, room_id):
+        room = self.env["chatroom.room"].browse(room_id)
+        if not room.exists():
             return
 
-        agent = conversation.agent_id
-        room = conversation.room_id
+        agent = room.ai_agent_id or self
 
         try:
-            context_messages = conversation.build_context_messages()
+            context_messages = room.build_context_messages()
 
             tools = None
             if agent.tool_ids:
@@ -243,9 +157,6 @@ Always maintain conversation context from previous messages.
 
             result = agent.provider_id.generate_completion(
                 messages=context_messages,
-                model=agent.model or None,
-                temperature=agent.temperature or None,
-                max_tokens=agent.max_tokens or None,
                 tools=tools,
             )
 
@@ -253,7 +164,7 @@ Always maintain conversation context from previous messages.
             has_tool_calls = bool((result or {}).get("tool_calls"))
 
             if not result or (not has_content and not has_tool_calls):
-                _logger.error(
+                _logger.warning(
                     "AI response empty or invalid for room %s. "
                     "Result: %s, Has content: %s, Has tool calls: %s",
                     room.name,
@@ -261,17 +172,16 @@ Always maintain conversation context from previous messages.
                     has_content,
                     has_tool_calls,
                 )
-                room.action_pause_ai_and_request_attention()
                 return
 
             if result.get("tool_calls"):
-                conversation.add_assistant_message_with_tools(
+                room.add_assistant_message_with_tools(
                     content=result.get("content"), tool_calls=result.get("tool_calls")
                 )
 
                 tool_results = []
                 for tool_call in result["tool_calls"]:
-                    tool_result = agent._execute_tool_call(conversation, tool_call)
+                    tool_result = agent._execute_tool_call(room, tool_call)
                     tool_results.append(
                         {
                             "id": tool_call.get("id"),
@@ -280,21 +190,26 @@ Always maintain conversation context from previous messages.
                         }
                     )
 
-                conversation.add_tool_results(tool_results)
+                room.add_tool_results(tool_results)
 
-                result = agent.provider_id.generate_completion(
-                    messages=conversation.build_context_messages(),
-                    model=agent.model or None,
-                    temperature=agent.temperature or None,
-                    max_tokens=agent.max_tokens or None,
-                )
+                try:
+                    result = agent.provider_id.generate_completion(
+                        messages=room.build_context_messages(),
+                    )
+                except Exception as follow_up_error:
+                    _logger.warning(
+                        "Follow-up completion after tools failed for room %s: %s",
+                        room.name,
+                        follow_up_error,
+                    )
+                    return
 
             if not result.get("content"):
                 return
 
             message_vals = {
                 "room_id": room.id,
-                "body": result["content"],
+                "body": self._convert_ai_response_to_html(result["content"]),
                 "direction": "outgoing",
                 "user_id": self.env.ref("base.user_admin").id,
                 "author_name": agent.name,
@@ -303,21 +218,14 @@ Always maintain conversation context from previous messages.
 
             ai_message = self.env["chatroom.message"].sudo().create(message_vals)
 
-            conversation.add_message(ai_message)
-
-            agent.sudo().write(
-                {
-                    "total_responses": agent.total_responses + 1,
-                    "last_response_date": fields.Datetime.now(),
-                }
-            )
+            room.add_message(ai_message)
 
         except Exception as e:
             _logger.error("Error generating AI response: %s", e)
-            conversation.write({"state": "error", "error_message": str(e)})
+            room.write({"ai_conversation_state": "error", "ai_error_message": str(e)})
             room.action_pause_ai_and_request_attention()
 
-    def _execute_tool_call(self, conversation, tool_call):
+    def _execute_tool_call(self, room, tool_call):
         self.ensure_one()
 
         if "function" in tool_call:
@@ -329,13 +237,13 @@ Always maintain conversation context from previous messages.
 
         tool_call_id = tool_call.get("id")
 
-        if tool_call_id and conversation.has_tool_call_result(tool_call_id):
-            existing_result = conversation.get_tool_call_result(tool_call_id)
+        if tool_call_id and room.has_tool_call_result(tool_call_id):
+            existing_result = room.get_tool_call_result(tool_call_id)
             _logger.info(
-                "Skipping duplicate tool_call_id %s for tool %s in conversation %s",
+                "Skipping duplicate tool_call_id %s for tool %s in room %s",
                 tool_call_id,
                 tool_name,
-                conversation.id,
+                room.id,
             )
             return existing_result
 
@@ -376,7 +284,7 @@ Always maintain conversation context from previous messages.
             return {"error": f"Tool {tool_name} not found"}
 
         try:
-            result = tool.execute(conversation.room_id, tool_args, conversation)
+            result = tool.execute(room, tool_args, room)
 
             _logger.info(
                 "AI Tool '%s' executed - Parameters: %s - Result: %s",
@@ -400,15 +308,13 @@ Always maintain conversation context from previous messages.
 
             self.env["chatroom.message"].create(
                 {
-                    "room_id": conversation.room_id.id,
+                    "room_id": room.id,
                     "body": tool_note,
                     "direction": "outgoing",
                     "is_internal": True,
                     "user_id": self.env.ref("base.user_admin").id,
                 }
             )
-
-            self.sudo().write({"total_tool_executions": self.total_tool_executions + 1})
 
             return result
 
@@ -422,9 +328,7 @@ Always maintain conversation context from previous messages.
 
             self.env["chatroom.message"].create(
                 {
-                    "room_id": conversation.room_id.id,
-                    "body": self.env._("🤖 AI Tool Failed: %s ❌", tool.name),
-                    "direction": "outgoing",
+                    "room_id": room.id,
                     "is_internal": True,
                     "user_id": self.env.ref("base.user_admin").id,
                 }

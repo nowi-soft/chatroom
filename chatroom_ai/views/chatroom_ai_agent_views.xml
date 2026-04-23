@@ -30,8 +30,6 @@
                 <field name="name" />
                 <field name="provider_id" />
                 <field name="active" invisible="1" />
-                <field name="total_responses" />
-                <field name="last_response_date" />
             </list>
         </field>
     </record>
@@ -41,22 +39,16 @@
         <field name="model">chatroom.ai.agent</field>
         <field name="arch" type="xml">
             <form string="AI Agent">
-                <header />
+                <header>
+                    <button
+                        name="action_open_setup_wizard"
+                        type="object"
+                        string="Reconfigure with Chat"
+                        invisible="not id"
+                    />
+                </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button
-                            name="action_view_conversations"
-                            type="object"
-                            class="oe_stat_button"
-                            icon="fa-comments"
-                        >
-                            <field
-                                name="conversation_count"
-                                widget="statinfo"
-                                string="Conversations"
-                            />
-                        </button>
-                    </div>
+                    <div class="oe_button_box" name="button_box" />
                     <div class="oe_title">
                         <h1>
                             <field name="name" placeholder="AI Agent Name" />
@@ -65,18 +57,7 @@
                     <group>
                         <group name="basic_config">
                             <field name="provider_id" required="1" />
-                            <field
-                                name="model"
-                                placeholder="Leave empty for provider default"
-                            />
-                            <field name="temperature" />
-                            <field name="max_tokens" />
                             <field name="max_conversation_length" />
-                        </group>
-                        <group name="stats">
-                            <field name="total_responses" />
-                            <field name="total_tool_executions" />
-                            <field name="last_response_date" />
                             <field name="unsupported_media_message" widget="text" />
                         </group>
                     </group>
@@ -104,7 +85,6 @@
                                     <field name="name" />
                                     <field name="code_name" />
                                     <field name="description" />
-                                    <field name="execution_count" />
                                 </list>
                             </field>
                         </page>

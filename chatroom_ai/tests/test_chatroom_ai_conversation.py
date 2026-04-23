@@ -31,17 +31,13 @@ class TestChatroomAIConversation(TransactionCase):
             }
         )
         cls.room = cls.env["chatroom.room"].create({"name": "Conversation Room"})
-        cls.conversation = cls.env["chatroom.ai.conversation"].create(
-            {
-                "agent_id": cls.agent.id,
-                "room_id": cls.room.id,
-            }
-        )
+        cls.room.write({"ai_agent_id": cls.agent.id})
+        cls.conversation = cls.room  # room holds AI context directly
 
     def test_load_context_invalid_json(self):
-        self.conversation.context_messages = "{broken"
-        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_conversation"):
-            self.assertEqual(self.conversation._load_context(), [])
+        self.room.ai_context_messages = "{broken"
+        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_room"):
+            self.assertEqual(self.room._load_context(), [])
 
     def test_add_message_and_summary(self):
         msg1 = self.env["chatroom.message"].create(
@@ -66,16 +62,16 @@ class TestChatroomAIConversation(TransactionCase):
             }
         )
 
-        self.conversation.add_message(msg1)
-        self.conversation.add_message(msg2)
-        self.conversation.add_message(msg3)
+        self.room.add_message(msg1)
+        self.room.add_message(msg2)
+        self.room.add_message(msg3)
 
-        self.assertEqual(self.conversation.message_count, 2)
-        self.assertTrue(self.conversation.summary)
-        self.assertGreaterEqual(self.conversation.human_messages, 3)
+        context = self.room._load_context()
+        self.assertEqual(len(context), 2)
+        self.assertTrue(self.room.ai_summary)
 
     def test_build_context_messages(self):
-        self.conversation.context_messages = json.dumps(
+        self.room.ai_context_messages = json.dumps(
             [
                 {
                     "role": "user",
@@ -88,30 +84,31 @@ class TestChatroomAIConversation(TransactionCase):
                 },
             ]
         )
-        messages = self.conversation.build_context_messages()
+        messages = self.room.build_context_messages()
 
         self.assertEqual(messages[0]["role"], "system")
         self.assertIn("CHANNEL CONTEXT", messages[0]["content"])
         self.assertTrue(any(m["role"] == "assistant" for m in messages))
 
     def test_tool_results_helpers(self):
-        self.conversation.context_messages = json.dumps([])
-        self.conversation.add_tool_results(
+        self.room.ai_context_messages = json.dumps([])
+        self.room.add_tool_results(
             [
                 {"id": "call_1", "name": "x", "result": {"ok": True}},
                 {"id": "call_1", "name": "x", "result": {"ok": True}},
             ]
         )
 
-        self.assertTrue(self.conversation.has_tool_call_result("call_1"))
-        result = self.conversation.get_tool_call_result("call_1")
+        self.assertTrue(self.room.has_tool_call_result("call_1"))
+        result = self.room.get_tool_call_result("call_1")
         self.assertEqual(result["ok"], True)
-        self.assertEqual(self.conversation.tool_executions, 1)
+        # second add_tool_results with same id is deduped
+        context = self.room._load_context()
+        tool_msgs = [m for m in context if m.get("role") == "tool"]
+        self.assertEqual(len(tool_msgs), 1)
 
-    def test_state_actions(self):
-        self.conversation.action_pause()
-        self.assertEqual(self.conversation.state, "paused")
-        self.conversation.action_resume()
-        self.assertEqual(self.conversation.state, "active")
-        self.conversation.action_complete()
-        self.assertEqual(self.conversation.state, "completed")
+    def test_state_field(self):
+        self.room.write({"ai_conversation_state": "paused"})
+        self.assertEqual(self.room.ai_conversation_state, "paused")
+        self.room.write({"ai_conversation_state": "active"})
+        self.assertEqual(self.room.ai_conversation_state, "active")

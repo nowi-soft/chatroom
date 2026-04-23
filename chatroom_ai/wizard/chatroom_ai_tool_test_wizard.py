@@ -1,5 +1,3 @@
-"""Wizard for testing AI tools"""
-
 import json
 import logging
 
@@ -60,22 +58,13 @@ class ChatroomAIToolTestWizard(models.TransientModel):
         else:
             test_room = self.room_id
 
-        conversation = self.env["chatroom.ai.conversation"].create(
-            {
-                "room_id": test_room.id,
-                "agent_id": self.agent_id.id,
-                "state": "testing",
-            }
-        )
-
         try:
-            result = self.tool_id.execute(test_room, params, conversation)
+            result = self.tool_id.execute(test_room, params, test_room)
 
             result_text = json.dumps(result, indent=2, ensure_ascii=False)
 
             self.write({"result": result_text, "state": "done"})
 
-            conversation.unlink()
             if temp_room_created:
                 test_room.unlink()
 
@@ -88,8 +77,6 @@ class ChatroomAIToolTestWizard(models.TransientModel):
             }
 
         except Exception as e:
-            if conversation.exists():
-                conversation.unlink()
             if temp_room_created and test_room.exists():
                 test_room.unlink()
 

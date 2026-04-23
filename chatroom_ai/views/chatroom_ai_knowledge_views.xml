@@ -6,7 +6,6 @@
             <search>
                 <field name="name" />
                 <field name="content_type" />
-                <field name="tag_ids" />
                 <separator />
                 <filter
                     string="Active"
@@ -42,11 +41,6 @@
                 <field name="sequence" widget="handle" />
                 <field name="name" />
                 <field name="content_type" />
-                <field
-                    name="tag_ids"
-                    widget="many2many_tags"
-                    options="{'color_field': 'color'}"
-                />
                 <field
                     name="processing_status"
                     widget="badge"
@@ -93,12 +87,6 @@
                             />
                             <field name="char_count" />
                             <field name="last_updated" />
-                            <field
-                                name="tag_ids"
-                                widget="many2many_tags"
-                                options="{'color_field': 'color', 'no_create_edit': False}"
-                                placeholder="Add tags..."
-                            />
                         </group>
                     </group>
                     <div

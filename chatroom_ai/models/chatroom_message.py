@@ -203,8 +203,9 @@ class ChatroomMessage(models.Model):
             if not agent.should_respond_to_room(room):
                 return
 
-            conversation = agent.get_or_create_conversation(room)
+            agent.get_or_create_conversation(room)
             has_unsupported_messages = False
+            messages_added = False
 
             for message in room_messages.sorted("create_date", reverse=False):
                 if message.message_type not in ["text", "audio"]:
@@ -214,10 +215,11 @@ class ChatroomMessage(models.Model):
                 if message.message_type == "audio" and message.is_transcription_failed:
                     continue
 
-                conversation.add_message(message)
+                room.add_message(message)
+                messages_added = True
 
-            if conversation.message_count > 0:
-                agent._generate_and_send_response(conversation.id)
+            if messages_added:
+                agent._generate_and_send_response(room.id)
 
             if has_unsupported_messages and agent.unsupported_media_message:
                 self.env["chatroom.message"].sudo().create(

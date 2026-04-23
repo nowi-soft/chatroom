@@ -7,8 +7,6 @@
                 <field name="name" />
                 <field name="assigned_to_id" />
                 <field name="state" />
-                <field name="message_count" />
-                <field name="last_message_date" />
             </list>
         </field>
     </record>
@@ -17,37 +15,13 @@
         <field name="name">chatroom.room.form</field>
         <field name="model">chatroom.room</field>
         <field name="arch" type="xml">
-            <form>
+            <form create="0" edit="0" delete="0">
                 <header>
                     <button
                         name="action_open_chatroom"
                         string="Open in Chatroom"
                         type="object"
                         class="oe_highlight"
-                    />
-                    <button
-                        name="action_assign_to_me"
-                        string="Assign To Me"
-                        type="object"
-                        invisible="assigned_to_id"
-                    />
-                    <button
-                        name="action_unassign"
-                        string="Unassign"
-                        type="object"
-                        invisible="not assigned_to_id"
-                    />
-                    <button
-                        name="action_close"
-                        string="Close"
-                        type="object"
-                        invisible="state == 'closed'"
-                    />
-                    <button
-                        name="action_reopen"
-                        string="Reopen"
-                        type="object"
-                        invisible="state != 'closed'"
                     />
                     <field name="state" widget="statusbar" />
                 </header>
@@ -58,8 +32,6 @@
                         </group>
                         <group>
                             <field name="assigned_to_id" />
-                            <field name="message_count" />
-                            <field name="last_message_date" />
                         </group>
                     </group>
                     <notebook>

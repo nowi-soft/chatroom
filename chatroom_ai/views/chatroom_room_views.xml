@@ -19,13 +19,6 @@
                     class="btn-warning"
                     invisible="not ai_enabled"
                 />
-                <button
-                    name="action_view_ai_conversations"
-                    type="object"
-                    string="AI Conversations"
-                    class="btn-secondary"
-                    invisible="not ai_conversation_ids"
-                />
             </xpath>
 
             <xpath expr="//field[@name='assigned_to_id']" position="after">

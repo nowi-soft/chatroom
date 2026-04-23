@@ -12,8 +12,6 @@
                     decoration-success="state == 'active'"
                     decoration-danger="state == 'error'"
                 />
-                <field name="total_requests" />
-                <field name="total_tokens_used" />
             </list>
         </field>
     </record>
@@ -52,6 +50,12 @@
                         string="Test Connection"
                         class="oe_highlight"
                     />
+                    <button
+                        name="action_fetch_models"
+                        type="object"
+                        string="Fetch Models"
+                        invisible="not api_key"
+                    />
                     <field name="state" widget="statusbar" />
                 </header>
                 <sheet>
@@ -61,33 +65,25 @@
                         </h1>
                     </div>
                     <group>
-                        <group name="provider_config">
-                            <field name="provider_type" required="1" />
-                            <field name="api_key" password="True" required="1" />
-                            <field
-                                name="api_base_url"
-                                placeholder="Leave empty for default"
-                            />
-                            <field name="organization_id" />
-                            <field name="active" />
-                        </group>
-                        <group name="default_settings">
-                            <field name="default_model" required="1" />
-                            <field name="default_temperature" />
-                            <field name="default_max_tokens" />
-                        </group>
+                        <field name="provider_type" required="1" />
+                        <field name="api_key" password="True" required="1" />
+                        <field name="default_model" required="1" />
                     </group>
 
-                    <group name="extra_info">
-                        <group string="Statistics">
-                            <field name="total_requests" />
-                            <field name="total_tokens_used" />
-                            <field name="last_request_date" />
-                        </group>
-                        <group string="Error Information" invisible="state != 'error'">
-                            <field name="error_message" nolabel="1" />
-                        </group>
+                    <group string="Error Information" invisible="state != 'error'">
+                        <field name="error_message" nolabel="1" />
                     </group>
+
+                    <notebook>
+                        <page string="Available Models" name="available_models">
+                            <field
+                                name="available_models"
+                                nolabel="1"
+                                readonly="1"
+                                placeholder="Click 'Fetch Models' to load the list"
+                            />
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

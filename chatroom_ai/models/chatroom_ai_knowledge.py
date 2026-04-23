@@ -38,13 +38,6 @@ class ChatroomAIKnowledge(models.Model):
     file_name = fields.Char()
 
     description = fields.Text()
-    tag_ids = fields.Many2many(
-        "chatroom.ai.knowledge.tag",
-        "chatroom_ai_knowledge_tag_rel",
-        "knowledge_id",
-        "tag_id",
-    )
-
     processing_status = fields.Selection(
         [
             ("not_processed", "Not Processed"),

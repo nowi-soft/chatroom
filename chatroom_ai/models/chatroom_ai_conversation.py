@@ -41,15 +41,12 @@ class ChatroomAIConversation(models.Model):
     )
 
     message_count = fields.Integer(default=0)
+    tool_executions = fields.Integer(default=0)
     start_date = fields.Datetime(default=fields.Datetime.now, readonly=True)
     last_message_date = fields.Datetime()
     end_date = fields.Datetime()
 
     error_message = fields.Text()
-
-    ai_responses = fields.Integer(default=0)
-    human_messages = fields.Integer(default=0)
-    tool_executions = fields.Integer(default=0)
 
     def _load_context(self):
         self.ensure_one()
@@ -104,7 +101,6 @@ class ChatroomAIConversation(models.Model):
         if external_id:
             lines.append(f"- Channel external_id: {external_id}")
 
-        # Channel-specific guidance to avoid redundant questions.
         if connector_type == "evolution":
             lines.append(
                 "- External ID usually maps to WhatsApp phone. "
@@ -169,11 +165,6 @@ class ChatroomAIConversation(models.Model):
                 "message_id": message.id,
             }
         )
-
-        if role == "user":
-            self.human_messages += 1
-        else:
-            self.ai_responses += 1
 
         max_length = self.agent_id.max_conversation_length or 20
         if len(context) > max_length:
@@ -277,7 +268,6 @@ class ChatroomAIConversation(models.Model):
         self.write(
             {
                 "context_messages": json.dumps(context),
-                "ai_responses": self.ai_responses + 1,
             }
         )
 

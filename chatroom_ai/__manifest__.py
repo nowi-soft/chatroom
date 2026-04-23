@@ -26,20 +26,16 @@
         "data/queue_job_data.xml",
         "views/chatroom_ai_provider_views.xml",
         "views/chatroom_ai_agent_views.xml",
-        "views/chatroom_ai_conversation_views.xml",
         "views/chatroom_ai_knowledge_views.xml",
-        "views/chatroom_ai_knowledge_tag_views.xml",
         "views/chatroom_ai_tool_views.xml",
+        "views/chatroom_ai_conversation_views.xml",
         "views/chatroom_room_views.xml",
         "views/chatroom_message_views.xml",
         "views/res_config_settings_views.xml",
-        "views/chatroom_menus.xml",
         "wizard/chatroom_ai_tool_test_wizard_views.xml",
+        "views/chatroom_menus.xml",
     ],
     "demo": [],
-    "oca_data_manual": [
-        "data/demo_data.xml",
-    ],
     "assets": {
         "web.assets_backend": [
             "chatroom_ai/static/src/**/*.js",

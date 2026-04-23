@@ -30,19 +30,13 @@ class TestChatroomAIAgent(TransactionCase):
             }
         )
         cls.room = cls.env["chatroom.room"].create({"name": "Agent Room"})
-        cls.conversation = cls.env["chatroom.ai.conversation"].create(
-            {
-                "agent_id": cls.agent.id,
-                "room_id": cls.room.id,
-            }
-        )
+        cls.conversation = cls.room  # room holds AI context directly
         cls.tool = cls.env["chatroom.ai.tool"].create(
             {
                 "name": "Echo",
                 "code_name": "echo_tool",
                 "description": "Echoes params",
                 "parameters_schema": '{"type":"object"}',
-                "implementation_type": "python",
                 "python_code": "result = {'success': True, 'echo': params}",
             }
         )
@@ -62,7 +56,7 @@ class TestChatroomAIAgent(TransactionCase):
 
     def test_execute_tool_call_with_invalid_json_args(self):
         result = self.agent._execute_tool_call(
-            self.conversation,
+            self.room,
             {
                 "id": "call_bad_json",
                 "function": {
@@ -75,11 +69,11 @@ class TestChatroomAIAgent(TransactionCase):
         self.assertTrue(result["success"])
 
     def test_execute_tool_call_duplicate_result(self):
-        self.conversation.add_tool_results(
+        self.room.add_tool_results(
             [{"id": "call_dup", "name": "echo_tool", "result": {"ok": True}}]
         )
         result = self.agent._execute_tool_call(
-            self.conversation,
+            self.room,
             {
                 "id": "call_dup",
                 "function": {
@@ -92,7 +86,7 @@ class TestChatroomAIAgent(TransactionCase):
 
     def test_execute_tool_call_tool_not_found(self):
         result = self.agent._execute_tool_call(
-            self.conversation,
+            self.room,
             {
                 "id": "call_not_found",
                 "function": {"name": "unknown_tool", "arguments": "{}"},
@@ -108,7 +102,7 @@ class TestChatroomAIAgent(TransactionCase):
             autospec=True,
             return_value={"content": "AI says hi", "usage": {"total_tokens": 1}},
         ):
-            self.agent._generate_and_send_response(self.conversation.id)
+            self.agent._generate_and_send_response(self.room.id)
 
         ai_message = self.env["chatroom.message"].search(
             [
@@ -138,6 +132,6 @@ class TestChatroomAIAgent(TransactionCase):
                 return_value=True,
             ) as pause_action,
         ):
-            self.agent._generate_and_send_response(self.conversation.id)
+            self.agent._generate_and_send_response(self.room.id)
 
         self.assertGreaterEqual(pause_action.call_count, 1)

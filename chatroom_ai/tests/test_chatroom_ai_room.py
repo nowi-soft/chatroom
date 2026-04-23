@@ -26,9 +26,11 @@ class TestChatroomAIRoom(TransactionCase):
         self.assertEqual(action["type"], "ir.actions.client")
         self.assertEqual(action["tag"], "display_notification")
 
-    def test_action_view_ai_conversations(self):
-        action = self.room.action_view_ai_conversations()
+    def test_action_pause_ai_and_request_attention(self):
+        self.room.write({"ai_enabled": True, "needs_attention": False})
 
-        self.assertEqual(action["type"], "ir.actions.act_window")
-        self.assertEqual(action["res_model"], "chatroom.ai.conversation")
-        self.assertEqual(action["domain"], [("room_id", "=", self.room.id)])
+        self.room.action_pause_ai_and_request_attention()
+
+        self.assertFalse(self.room.ai_enabled)
+        self.assertTrue(self.room.needs_attention)
+        self.assertEqual(self.room.ai_conversation_state, "paused")

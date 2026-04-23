@@ -28,19 +28,14 @@ class TestAICoreCoverage(TransactionCase):
             }
         )
         cls.room = cls.env["chatroom.room"].create({"name": "AI Room"})
-        cls.conversation = cls.env["chatroom.ai.conversation"].create(
-            {
-                "agent_id": cls.agent.id,
-                "room_id": cls.room.id,
-            }
-        )
+        cls.room.write({"ai_agent_id": cls.agent.id})
+        cls.conversation = cls.room  # room holds AI context directly
         cls.tool = cls.env["chatroom.ai.tool"].create(
             {
                 "name": "Echo",
                 "code_name": "echo_tool",
                 "description": "Echo params",
                 "parameters_schema": '{"type":"object"}',
-                "implementation_type": "python",
                 "python_code": "result = {'success': True, 'echo': params}",
             }
         )
@@ -83,10 +78,10 @@ class TestAICoreCoverage(TransactionCase):
         self.provider.state = "active"
 
     def test_conversation_context_helpers(self):
-        self.conversation.context_messages = "{bad"
-        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_conversation"):
-            self.assertEqual(self.conversation._load_context(), [])
-        self.conversation.context_messages = json.dumps([])
+        self.room.ai_context_messages = "{bad"
+        with mute_logger("odoo.addons.chatroom_ai.models.chatroom_room"):
+            self.assertEqual(self.room._load_context(), [])
+        self.room.ai_context_messages = json.dumps([])
 
         msg1 = self.env["chatroom.message"].create(
             {"room_id": self.room.id, "body": "one", "direction": "incoming"}
@@ -97,20 +92,21 @@ class TestAICoreCoverage(TransactionCase):
         msg3 = self.env["chatroom.message"].create(
             {"room_id": self.room.id, "body": "three", "direction": "incoming"}
         )
-        self.conversation.add_message(msg1)
-        self.conversation.add_message(msg2)
-        self.conversation.add_message(msg3)
+        self.room.add_message(msg1)
+        self.room.add_message(msg2)
+        self.room.add_message(msg3)
 
-        self.assertEqual(self.conversation.message_count, 2)
-        self.assertTrue(self.conversation.summary)
+        context = self.room._load_context()
+        self.assertEqual(len(context), 2)
+        self.assertTrue(self.room.ai_summary)
 
-        self.conversation.add_tool_results(
+        self.room.add_tool_results(
             [{"id": "call_1", "name": "echo_tool", "result": {"ok": True}}]
         )
-        self.assertTrue(self.conversation.has_tool_call_result("call_1"))
-        self.assertEqual(self.conversation.get_tool_call_result("call_1")["ok"], True)
+        self.assertTrue(self.room.has_tool_call_result("call_1"))
+        self.assertEqual(self.room.get_tool_call_result("call_1")["ok"], True)
 
-        built = self.conversation.build_context_messages()
+        built = self.room.build_context_messages()
         self.assertEqual(built[0]["role"], "system")
 
     def test_tool_methods(self):
@@ -120,19 +116,14 @@ class TestAICoreCoverage(TransactionCase):
                 "code_name": "tool_2",
                 "description": "desc",
                 "parameters_schema": '{"foo": 1}',
-                "implementation_type": "python",
-                "python_code_source": "result = {'success': True}",
-                "python_code": "",
+                "python_code": "result = {'success': True}",
             }
         )
         with mute_logger("odoo.addons.chatroom_ai.models.chatroom_ai_tool"):
             definition = tool.get_tool_definition()
         self.assertEqual(definition["parameters"]["type"], "object")
 
-        action = tool.action_copy_source_to_implementation()
-        self.assertEqual(action["tag"], "display_notification")
-
-        exec_result = tool.execute(self.room, {"x": 1}, self.conversation)
+        exec_result = tool.execute(self.room, {"x": 1}, self.room)
         self.assertTrue(exec_result["success"])
 
     def test_agent_tool_call_and_response_flow(self):
