@@ -5,7 +5,7 @@ class ChatroomRoom(models.Model):
     _name = "chatroom.room"
     _description = "Chat Room"
     _inherit = ["bus.listener.mixin"]
-    _order = "last_message_date desc, id desc"
+    _order = "needs_attention desc, last_message_date desc, id desc"
 
     name = fields.Char(required=True, index=True)
     active = fields.Boolean(default=True)
@@ -34,6 +34,12 @@ class ChatroomRoom(models.Model):
     message_count = fields.Integer(compute="_compute_message_count", store=True)
     last_message_date = fields.Datetime(compute="_compute_last_message", store=True)
     last_message_preview = fields.Char(compute="_compute_last_message", store=True)
+
+    needs_attention = fields.Boolean(
+        default=False,
+        index=True,
+        help="Chat requires urgent human attention",
+    )
 
     @api.depends("message_ids")
     def _compute_message_count(self):

@@ -9,13 +9,6 @@ _logger = logging.getLogger(__name__)
 
 class ChatroomRoom(models.Model):
     _inherit = "chatroom.room"
-    _order = "needs_attention desc, last_message_date desc, id desc"
-
-    needs_attention = fields.Boolean(
-        default=False,
-        index=True,
-        help="Chat requires urgent human attention (AI failed, error, etc.)",
-    )
 
     ai_agent_id = fields.Many2one(
         "chatroom.ai.agent",
