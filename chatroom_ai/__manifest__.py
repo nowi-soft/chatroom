@@ -28,7 +28,6 @@
         "views/chatroom_ai_agent_views.xml",
         "views/chatroom_ai_knowledge_views.xml",
         "views/chatroom_ai_tool_views.xml",
-        "views/chatroom_ai_conversation_views.xml",
         "views/chatroom_room_views.xml",
         "views/chatroom_message_views.xml",
         "views/res_config_settings_views.xml",
