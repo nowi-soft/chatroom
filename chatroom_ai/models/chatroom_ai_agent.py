@@ -57,6 +57,7 @@ class ChatroomAIAgent(models.Model):
 
     unsupported_media_message = fields.Text(
         required=True,
+        default="I'm sorry, I can only process text messages.",
         help=(
             "Message sent when the agent receives an image, file, or "
             "video that it cannot process"

@@ -1,3 +1,5 @@
+from unittest import SkipTest
+
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
 
@@ -9,7 +11,7 @@ class TestChatroomAITool(TransactionCase):
         selection = cls.env["chatroom.ai.provider"]._fields["provider_type"].selection
         selection_keys = {item[0] for item in selection}
         if "openai" not in selection_keys:
-            raise Exception("openai provider type not available")
+            raise SkipTest("openai provider type not available")
 
         cls.provider = cls.env["chatroom.ai.provider"].create(
             {

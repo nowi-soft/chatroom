@@ -53,20 +53,13 @@ class TestAIMessageProcessing(TransactionCase):
         pending = msg_text | msg_media
         pending.write({"ai_processing_state": "pending", "ai_pending_processing": True})
 
-        conversation = self.env["chatroom.ai.conversation"].create(
-            {
-                "room_id": self.room.id,
-                "agent_id": self.agent.id,
-            }
-        )
-
         agent_class = type(self.agent)
         with (
             patch.object(
                 agent_class,
                 "get_or_create_conversation",
                 autospec=True,
-                return_value=conversation,
+                return_value=self.room,
             ),
             patch.object(
                 agent_class,
@@ -100,24 +93,17 @@ class TestAIMessageProcessing(TransactionCase):
         )
         msg.write({"ai_processing_state": "pending", "ai_pending_processing": True})
 
-        conversation = self.env["chatroom.ai.conversation"].create(
-            {
-                "room_id": self.room.id,
-                "agent_id": self.agent.id,
-            }
-        )
-
-        conv_class = type(conversation)
+        room_class = type(self.room)
         agent_class = type(self.agent)
         with (
             patch.object(
                 agent_class,
                 "get_or_create_conversation",
                 autospec=True,
-                return_value=conversation,
+                return_value=self.room,
             ),
             patch.object(
-                conv_class,
+                room_class,
                 "add_message",
                 autospec=True,
                 side_effect=RuntimeError("boom"),
