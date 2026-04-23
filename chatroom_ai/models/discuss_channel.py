@@ -1,7 +1,7 @@
 """Extend discuss.channel to intercept messages in AI agent setup channels."""
 
-import re
 import logging
+import re
 
 from odoo import fields, models
 
@@ -28,8 +28,16 @@ class DiscussChannel(models.Model):
 
         KB_STEPS = {"kb_manage", "kb_awaiting_update"}
         ACTIVE_STEPS = {
-            "business_name", "agent_name", "business_type", "business_description",
-            "objective", "lead_threshold", "tone", "extra_instructions", "confirm", "done",
+            "business_name",
+            "agent_name",
+            "business_type",
+            "business_description",
+            "objective",
+            "lead_threshold",
+            "tone",
+            "extra_instructions",
+            "confirm",
+            "done",
         } | KB_STEPS
 
         if session.step not in ACTIVE_STEPS:

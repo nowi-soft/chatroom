@@ -1,6 +1,6 @@
-import re
 import json
 import logging
+import re
 
 from markupsafe import Markup
 
@@ -19,32 +19,24 @@ _OBJECTIVE_TEXTS = {
 
 _TONE_TEXTS = {
     "friendly": (
-        "amigable y cercano. Usá tuteo (vos/tú), emojis con moderación y lenguaje natural.\n"
-        "Ejemplo: '¡Hola! Claro que sí 😊 [info]. ¿Hay algo más en lo que te pueda ayudar?'"
+        "amigable y cercano. Usá tuteo (vos/tú), emojis con moderación y lenguaje natural.\n"  # noqa: E501
+        "Ejemplo: '¡Hola! Claro que sí 😊 [info]. ¿Hay algo más en lo que te pueda ayudar?'"  # noqa: E501
     ),
     "formal": (
-        "formal y profesional. Evitá emojis, usá un trato respetuoso (usted o impersonal) "
+        "formal y profesional. Evitá emojis, usá un trato respetuoso (usted o impersonal) "  # noqa: E501
         "y lenguaje cuidado.\n"
         "Ejemplo: 'Buenos días. Con gusto le brindo la información. [info]. "
         "Quedo a su disposición para cualquier consulta adicional.'"
     ),
     "neutral": (
-        "neutral y directo. Tuteo natural, sin emojis excesivos, respuestas claras y al punto.\n"
+        "neutral y directo. Tuteo natural, sin emojis excesivos, respuestas claras y al punto.\n"  # noqa: E501
         "Ejemplo: 'Hola. Acá te cuento: [info]. Cualquier duda me avisás.'"
     ),
 }
 
-_OBJECTIVE_OPTIONS = (
-    "\n\n1️⃣ Capturar leads"
-    "\n2️⃣ Responder preguntas frecuentes"
-    "\n3️⃣ Ambos"
-)
+_OBJECTIVE_OPTIONS = "\n\n1️⃣ Capturar leads\n2️⃣ Responder preguntas frecuentes\n3️⃣ Ambos"
 
-_TONE_OPTIONS = (
-    "\n\n1️⃣ Amigable"
-    "\n2️⃣ Formal"
-    "\n3️⃣ Neutral"
-)
+_TONE_OPTIONS = "\n\n1️⃣ Amigable\n2️⃣ Formal\n3️⃣ Neutral"
 
 _BUSINESS_TYPE_OPTIONS = (
     "\n\n1️⃣ Distribuidora / Mayorista"
@@ -85,32 +77,32 @@ _BUSINESS_TYPE_CONTEXTS = {
         "Las consultas más frecuentes son: disponibilidad de stock, listas de precios, "
         "condiciones de pago (contado / cuenta corriente / transferencia), "
         "mínimo de pedido y zonas de reparto. "
-        "Cuando un cliente consulta precios, stock o condiciones de pago, hay intención comercial real."
+        "Cuando un cliente consulta precios, stock o condiciones de pago, hay intención comercial real."  # noqa: E501
     ),
     "retail": (
         "Atendés clientes que compran al por menor en tu local o de forma online. "
         "Las consultas más frecuentes son: disponibilidad de productos, precios, "
         "métodos de pago, envíos y garantía. "
-        "Cuando un cliente pregunta por el precio de un producto específico o su disponibilidad, "
+        "Cuando un cliente pregunta por el precio de un producto específico o su disponibilidad, "  # noqa: E501
         "hay intención comercial."
     ),
     "automotive": (
         "Vendés o reparás vehículos, motos o repuestos. "
-        "Las consultas más frecuentes son: modelos disponibles, precios, planes de financiación, "
+        "Las consultas más frecuentes son: modelos disponibles, precios, planes de financiación, "  # noqa: E501
         "prueba de manejo / test drive, posventa y servicio técnico. "
         "Cuando un cliente pregunta por financiación, solicita precio de un modelo "
         "o consulta disponibilidad de stock, hay intención comercial."
     ),
     "services": (
-        "Ofrecés servicios como reparaciones, mantenimiento, instalaciones, limpieza, etc. "
+        "Ofrecés servicios como reparaciones, mantenimiento, instalaciones, limpieza, etc. "  # noqa: E501
         "Las consultas más frecuentes son: presupuestos, disponibilidad horaria, "
         "zona de cobertura, tiempos de respuesta y garantía del trabajo. "
-        "Cuando un cliente pide un presupuesto o consulta disponibilidad para un servicio, "
+        "Cuando un cliente pide un presupuesto o consulta disponibilidad para un servicio, "  # noqa: E501
         "hay intención comercial."
     ),
     "appointments": (
         "Tu negocio trabaja con turnos o citas agendadas. "
-        "Las consultas más frecuentes son: disponibilidad de turnos, precios por servicio, "
+        "Las consultas más frecuentes son: disponibilidad de turnos, precios por servicio, "  # noqa: E501
         "cobertura de obra social / prepaga, dirección y medios de pago. "
         "Cuando un cliente consulta disponibilidad de turno o quiere agendar, "
         "hay intención comercial."
@@ -130,26 +122,26 @@ _LEAD_THRESHOLD_INSTRUCTIONS = {
     "any_inquiry": (
         "Registrá como lead a CUALQUIER persona que se contacte, incluso si solo hace "
         "una consulta general o pregunta básica. "
-        "Desde el inicio de la conversación intentá obtener su nombre y número de teléfono "
-        "de forma natural: por ejemplo '¿Me podés dejar tu nombre para personalizar la atención?'. "
+        "Desde el inicio de la conversación intentá obtener su nombre y número de teléfono "  # noqa: E501
+        "de forma natural: por ejemplo '¿Me podés dejar tu nombre para personalizar la atención?'. "  # noqa: E501
         "Usá lead_temperature='warm' para cualquier contacto y siempre completá "
-        "intent_signal con 'Cliente realizó una consulta' y next_action con 'Dar seguimiento'."
+        "intent_signal con 'Cliente realizó una consulta' y next_action con 'Dar seguimiento'."  # noqa: E501
     ),
     "product_interest": (
         "Registrá como lead a los clientes que pregunten por el precio, disponibilidad "
         "o características de un producto o servicio específico. "
-        "No registres consultas genéricas del tipo '¿qué vendés?' o '¿están abiertos?'. "
-        "Antes de crear el lead, intentá obtener su nombre y número de contacto de forma natural: "
-        "'Para pasarte la info detallada, ¿me decís tu nombre y un teléfono de contacto?'. "
+        "No registres consultas genéricas del tipo '¿qué vendés?' o '¿están abiertos?'. "  # noqa: E501
+        "Antes de crear el lead, intentá obtener su nombre y número de contacto de forma natural: "  # noqa: E501
+        "'Para pasarte la info detallada, ¿me decís tu nombre y un teléfono de contacto?'. "  # noqa: E501
         "Usá lead_temperature='warm' cuando pregunte por precio o producto, "
         "y 'hot' cuando pida avanzar o comprar."
     ),
     "clear_intent": (
-        "Registrá como lead ÚNICAMENTE a los clientes que muestren intención clara de comprar "
-        "o contratar: cuando pidan avanzar, confirmen que quieren el producto/servicio, "
-        "pregunten por formas de pago o financiación, pidan una propuesta/presupuesto concreto, "
+        "Registrá como lead ÚNICAMENTE a los clientes que muestren intención clara de comprar "  # noqa: E501
+        "o contratar: cuando pidan avanzar, confirmen que quieren el producto/servicio, "  # noqa: E501
+        "pregunten por formas de pago o financiación, pidan una propuesta/presupuesto concreto, "  # noqa: E501
         "o quieran coordinar una visita/turno/prueba. "
-        "NO crees leads por consultas generales, preguntas sobre horarios, precios genéricos "
+        "NO crees leads por consultas generales, preguntas sobre horarios, precios genéricos "  # noqa: E501
         "o dudas informativas. Esperá la señal clara antes de actuar. "
         "Usá lead_temperature='hot' para estos casos."
     ),
@@ -172,7 +164,10 @@ _KB_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "index": {"type": "integer", "description": "1-based index in the list"}
+                    "index": {
+                        "type": "integer",
+                        "description": "1-based index in the list",
+                    }
                 },
                 "required": ["index"],
             },
@@ -186,7 +181,10 @@ _KB_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "index": {"type": "integer", "description": "1-based index in the list"}
+                    "index": {
+                        "type": "integer",
+                        "description": "1-based index in the list",
+                    }
                 },
                 "required": ["index"],
             },
@@ -196,7 +194,7 @@ _KB_TOOLS = [
         "type": "function",
         "function": {
             "name": "request_file_upload",
-            "description": "Ask the user to attach a new file to add to the knowledge base",
+            "description": "Ask the user to attach a new file to add to the knowledge base",  # noqa: E501
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -204,11 +202,14 @@ _KB_TOOLS = [
         "type": "function",
         "function": {
             "name": "request_file_for_update",
-            "description": "Ask the user to attach a file to replace an existing KB item",
+            "description": "Ask the user to attach a file to replace an existing KB item",  # noqa: E501
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "index": {"type": "integer", "description": "1-based index of the item to replace"}
+                    "index": {
+                        "type": "integer",
+                        "description": "1-based index of the item to replace",
+                    }
                 },
                 "required": ["index"],
             },
@@ -303,9 +304,7 @@ class ChatroomAiAgentSetupSession(models.Model):
     _name = "chatroom.ai.agent.setup.session"
     _description = "AI Agent Setup Session (Discuss-based)"
 
-    channel_id = fields.Many2one(
-        "discuss.channel", required=True, ondelete="cascade"
-    )
+    channel_id = fields.Many2one("discuss.channel", required=True, ondelete="cascade")
     step = fields.Selection(
         [
             ("business_name", "Business Name"),
@@ -333,9 +332,8 @@ class ChatroomAiAgentSetupSession(models.Model):
     # Collected data
     business_name = fields.Char()
     agent_name = fields.Char(
-        string="Agent Name",
         help="Custom name for the assistant persona (e.g. 'Lucas', 'Sofia'). "
-             "If empty, the agent will introduce itself as the business assistant.",
+        "If empty, the agent will introduce itself as the business assistant.",
     )
     business_type = fields.Selection(
         [
@@ -398,15 +396,19 @@ class ChatroomAiAgentSetupSession(models.Model):
                 "¿Cuál es el nombre de tu negocio?"
             )
 
-        channel = self.env["discuss.channel"].sudo().create(
-            {
-                "name": channel_name,
-                "channel_type": "group",
-                "channel_member_ids": [
-                    (0, 0, {"partner_id": self.env.user.partner_id.id}),
-                    (0, 0, {"partner_id": bot.id}),
-                ],
-            }
+        channel = (
+            self.env["discuss.channel"]
+            .sudo()
+            .create(
+                {
+                    "name": channel_name,
+                    "channel_type": "group",
+                    "channel_member_ids": [
+                        (0, 0, {"partner_id": self.env.user.partner_id.id}),
+                        (0, 0, {"partner_id": bot.id}),
+                    ],
+                }
+            )
         )
 
         session = self.create(
@@ -429,7 +431,7 @@ class ChatroomAiAgentSetupSession(models.Model):
             "params": {"active_id": f"discuss.channel_{channel.id}"},
         }
 
-    def process_user_message(self, text):
+    def process_user_message(self, text):  # noqa: C901
         self.ensure_one()
         text = text.strip()
 
@@ -441,9 +443,9 @@ class ChatroomAiAgentSetupSession(models.Model):
             self.step = "agent_name"
             self._bot_post(
                 f"Perfecto, **{text}**! 🎉\n\n"
-                "¿Con qué nombre quiero que se presente el asistente a los clientes?\n\n"
+                "¿Con qué nombre quiero que se presente el asistente a los clientes?\n\n"  # noqa: E501
                 "Por ejemplo: _Lucas_, _Sofía_, _Max_.\n\n"
-                "Si no querés un nombre personalizado, escribí **ninguno** y lo llamaremos "
+                "Si no querés un nombre personalizado, escribí **ninguno** y lo llamaremos "  # noqa: E501
                 f"'Asistente de {text}'."
             )
 
@@ -492,14 +494,12 @@ class ChatroomAiAgentSetupSession(models.Model):
             if objective in ("leads", "both"):
                 self.step = "lead_threshold"
                 self._bot_post(
-                    "¿Cuándo querés que el agente registre una consulta como posible cliente?"
+                    "¿Cuándo querés que el agente registre una consulta como posible cliente?"  # noqa: E501
                     + _LEAD_THRESHOLD_OPTIONS
                 )
             else:
                 self.step = "tone"
-                self._bot_post(
-                    "¿Qué tono querés que use el agente?" + _TONE_OPTIONS
-                )
+                self._bot_post("¿Qué tono querés que use el agente?" + _TONE_OPTIONS)
 
         elif self.step == "lead_threshold":
             threshold = self._parse_lead_threshold(text)
@@ -510,9 +510,7 @@ class ChatroomAiAgentSetupSession(models.Model):
                 return
             self.lead_threshold = threshold
             self.step = "tone"
-            self._bot_post(
-                "¿Qué tono querés que use el agente?" + _TONE_OPTIONS
-            )
+            self._bot_post("¿Qué tono querés que use el agente?" + _TONE_OPTIONS)
 
         elif self.step == "tone":
             tone = self._parse_tone(text)
@@ -524,31 +522,48 @@ class ChatroomAiAgentSetupSession(models.Model):
             self.tone = tone
             self.step = "extra_instructions"
             self._bot_post(
-                "¿Hay alguna instrucción extra o restricción importante para el agente? "
-                "(Ej: horarios de atención, preguntas que no debe responder, datos de contacto)\n\n"
+                "¿Hay alguna instrucción extra o restricción importante para el agente? "  # noqa: E501
+                "(Ej: horarios de atención, preguntas que no debe responder, datos de contacto)\n\n"  # noqa: E501
                 "Escribí las instrucciones o **ninguna** para saltear."
             )
 
         elif self.step == "extra_instructions":
-            if text.lower() not in ("ninguna", "no", "skip", "n", "-", "nada", "ninguno"):
+            if text.lower() not in (
+                "ninguna",
+                "no",
+                "skip",
+                "n",
+                "-",
+                "nada",
+                "ninguno",
+            ):
                 self.extra_instructions = text
             else:
                 self.extra_instructions = False
 
-            obj_label = {"leads": "Capturar leads", "faq": "Responder FAQs", "both": "Ambos"}
-            tone_label = {"friendly": "Amigable", "formal": "Formal", "neutral": "Neutral"}
+            obj_label = {
+                "leads": "Capturar leads",
+                "faq": "Responder FAQs",
+                "both": "Ambos",
+            }
+            tone_label = {
+                "friendly": "Amigable",
+                "formal": "Formal",
+                "neutral": "Neutral",
+            }
             btype_label = _BUSINESS_TYPE_LABELS.get(self.business_type or "", "")
             threshold_label = _LEAD_THRESHOLD_LABELS.get(self.lead_threshold or "", "")
             summary = (
-                "📋 **Resumen del agente:**\n"
-                f"• **Negocio:** {self.business_name}\n"
+                f"📋 **Resumen del agente:**\n• **Negocio:** {self.business_name}\n"
             )
             if self.agent_name:
                 summary += f"• **Nombre del asistente:** {self.agent_name}\n"
             if btype_label:
                 summary += f"• **Tipo de negocio:** {btype_label}\n"
             summary += f"• **Descripción:** {self.business_description}\n"
-            summary += f"• **Objetivo:** {obj_label.get(self.objective, self.objective)}\n"
+            summary += (
+                f"• **Objetivo:** {obj_label.get(self.objective, self.objective)}\n"
+            )
             if threshold_label:
                 summary += f"• **Capturar lead cuando:** {threshold_label}\n"
             summary += f"• **Tono:** {tone_label.get(self.tone, self.tone)}\n"
@@ -557,12 +572,22 @@ class ChatroomAiAgentSetupSession(models.Model):
 
             is_update = bool(self.agent_id)
             verb = "actualizar el agente" if is_update else "crear el agente"
-            summary += f"\n¿{verb.capitalize()}? Escribí **sí** para confirmar o **no** para empezar de nuevo."
+            summary += f"\n¿{verb.capitalize()}? Escribí **sí** para confirmar o **no** para empezar de nuevo."  # noqa: E501
             self.step = "confirm"
             self._bot_post(summary)
 
         elif self.step == "confirm":
-            if text.lower() in ("sí", "si", "s", "yes", "ok", "dale", "confirmar", "confirmo", "crear"):
+            if text.lower() in (
+                "sí",
+                "si",
+                "s",
+                "yes",
+                "ok",
+                "dale",
+                "confirmar",
+                "confirmo",
+                "crear",
+            ):
                 self._create_agent()
             elif text.lower() in ("no", "cancelar", "cancel", "reiniciar"):
                 self.step = "business_name"
@@ -574,7 +599,9 @@ class ChatroomAiAgentSetupSession(models.Model):
                 self.lead_threshold = False
                 self.tone = False
                 self.extra_instructions = False
-                self._bot_post("Entendido, volvamos a empezar. ¿Cuál es el nombre de tu negocio?")
+                self._bot_post(
+                    "Entendido, volvamos a empezar. ¿Cuál es el nombre de tu negocio?"
+                )
             else:
                 self._bot_post(
                     "Escribí **sí** para confirmar o **no** para empezar de nuevo."
@@ -606,7 +633,7 @@ class ChatroomAiAgentSetupSession(models.Model):
         if not provider:
             self._bot_post(
                 "⚠️ No hay proveedores de IA activos. "
-                "Por favor configurá uno en **AI Agents → AI Providers** y volvé a intentarlo."
+                "Por favor configurá uno en **AI Agents → AI Providers** y volvé a intentarlo."  # noqa: E501
             )
             return
 
@@ -655,7 +682,7 @@ class ChatroomAiAgentSetupSession(models.Model):
         agent_link = self._agent_link(result_agent)
         self._bot_post_html(
             Markup(
-                f"🎉 ¡Agente <strong>{result_agent.name}</strong> {verb} exitosamente!<br/><br/>"
+                f"🎉 ¡Agente <strong>{result_agent.name}</strong> {verb} exitosamente!<br/><br/>"  # noqa: E501
                 f"Proveedor asignado: <strong>{provider.name}</strong><br/><br/>"
                 f"Ver agente: {agent_link}<br/><br/>"
                 "¿Querés cargar documentos al knowledge base?"
@@ -691,11 +718,27 @@ class ChatroomAiAgentSetupSession(models.Model):
             return "distributor"
         if t in ("2", "retail", "minorista", "tienda", "local", "comercio"):
             return "retail"
-        if t in ("3", "automotriz", "motos", "moto", "vehiculos", "autos", "automotive"):
+        if t in (
+            "3",
+            "automotriz",
+            "motos",
+            "moto",
+            "vehiculos",
+            "autos",
+            "automotive",
+        ):
             return "automotive"
         if t in ("4", "servicios", "services", "reparaciones", "instalaciones"):
             return "services"
-        if t in ("5", "turnos", "appointments", "medico", "médico", "dentista", "peluqueria"):
+        if t in (
+            "5",
+            "turnos",
+            "appointments",
+            "medico",
+            "médico",
+            "dentista",
+            "peluqueria",
+        ):
             return "appointments"
         if t in ("6", "inmobiliaria", "propiedades", "real_estate", "inmuebles"):
             return "real_estate"
@@ -706,7 +749,10 @@ class ChatroomAiAgentSetupSession(models.Model):
             return "distributor"
         if any(w in t for w in ("moto", "auto", "vehic", "carro", "repuest")):
             return "automotive"
-        if any(w in t for w in ("turno", "cita", "agenda", "médic", "medic", "denti", "peluc")):
+        if any(
+            w in t
+            for w in ("turno", "cita", "agenda", "médic", "medic", "denti", "peluc")
+        ):
             return "appointments"
         if any(w in t for w in ("inmob", "propied", "alquil", "depart")):
             return "real_estate"
@@ -723,7 +769,15 @@ class ChatroomAiAgentSetupSession(models.Model):
             return "any_inquiry"
         if t in ("2", "precio", "producto", "interes", "interés", "product"):
             return "product_interest"
-        if t in ("3", "intencion", "intención", "clara", "clear", "comprar", "contratar"):
+        if t in (
+            "3",
+            "intencion",
+            "intención",
+            "clara",
+            "clear",
+            "comprar",
+            "contratar",
+        ):
             return "clear_intent"
         # Fuzzy matching
         if any(w in t for w in ("cualquier", "todo contact", "captura max")):
@@ -736,17 +790,23 @@ class ChatroomAiAgentSetupSession(models.Model):
 
     @api.model
     def _get_bot_partner(self):
-        partner = self.env["res.partner"].sudo().search(
-            [("name", "=", "Setup Assistant"), ("active", "in", [True, False])],
-            limit=1,
+        partner = (
+            self.env["res.partner"]
+            .sudo()
+            .search(
+                [("name", "=", "Setup Assistant"), ("active", "in", [True, False])],
+                limit=1,
+            )
         )
         if not partner:
-            partner = self.env["res.partner"].sudo().create(
-                {"name": "Setup Assistant", "tz": "UTC"}
+            partner = (
+                self.env["res.partner"]
+                .sudo()
+                .create({"name": "Setup Assistant", "tz": "UTC"})
             )
         return partner
 
-    def _done_process_with_llm(self, text):
+    def _done_process_with_llm(self, text):  # noqa: C901
         self.ensure_one()
         agent = self._kb_get_agent()
 
@@ -771,22 +831,30 @@ class ChatroomAiAgentSetupSession(models.Model):
         kb_count = len(agent.sudo().knowledge_ids) if agent else 0
 
         # Fetch last bot message to give the LLM conversation context
-        last_bot_msg = self.env["mail.message"].search([
-            ("res_id", "=", self.channel_id.id),
-            ("model", "=", "discuss.channel"),
-            ("author_id", "=", self.bot_partner_id.id),
-        ], order="id desc", limit=1)
-        import re as _re
-        last_bot_text = _re.sub(r"<[^>]+>", "", last_bot_msg.body or "").strip() if last_bot_msg else ""
+        last_bot_msg = self.env["mail.message"].search(
+            [
+                ("res_id", "=", self.channel_id.id),
+                ("model", "=", "discuss.channel"),
+                ("author_id", "=", self.bot_partner_id.id),
+            ],
+            order="id desc",
+            limit=1,
+        )
+
+        last_bot_text = (
+            re.sub(r"<[^>]+>", "", last_bot_msg.body or "").strip()
+            if last_bot_msg
+            else ""
+        )
 
         system_prompt = (
             f"El agente '{agent_name}' ya fue configurado correctamente. "
             f"Tiene {kb_count} item(s) en el knowledge base.\n\n"
-            "Si el usuario quiere ver, agregar, modificar, borrar o gestionar archivos/documentos "
+            "Si el usuario quiere ver, agregar, modificar, borrar o gestionar archivos/documentos "  # noqa: E501
             "del knowledge base → llamá open_kb.\n"
-            "Si el usuario quiere ver, revisar o leer el prompt/instrucciones del agente "
+            "Si el usuario quiere ver, revisar o leer el prompt/instrucciones del agente "  # noqa: E501
             "→ llamá view_prompt.\n"
-            "Si el usuario quiere agregar, cambiar o actualizar instrucciones especiales del agente "
+            "Si el usuario quiere agregar, cambiar o actualizar instrucciones especiales del agente "  # noqa: E501
             "→ llamá update_instructions con el nuevo texto.\n"
             "Para cualquier otra cosa → llamá respond con una respuesta útil."
         )
@@ -843,11 +911,13 @@ class ChatroomAiAgentSetupSession(models.Model):
                 agent.sudo().write({"system_prompt": new_prompt})
                 self.generated_prompt = new_prompt
                 self._bot_post(
-                    f"✅ Instrucciones especiales actualizadas en el agente **{agent.name}**. "
+                    f"✅ Instrucciones especiales actualizadas en el agente **{agent.name}**. "  # noqa: E501
                     "El prompt fue regenerado."
                 )
             else:
-                self._bot_post("No pude extraer las instrucciones. Por favor escribilas de nuevo.")
+                self._bot_post(
+                    "No pude extraer las instrucciones. Por favor escribilas de nuevo."
+                )
         elif func_name == "respond":
             try:
                 args = json.loads(tool_calls[0]["function"].get("arguments") or "{}")
@@ -890,28 +960,36 @@ class ChatroomAiAgentSetupSession(models.Model):
             kb_summary = "(sin items)"
 
         system_prompt = (
-            f"Sos el asistente de gestión del knowledge base del agente '{agent.name}'.\n\n"
+            f"Sos el asistente de gestión del knowledge base del agente '{agent.name}'.\n\n"  # noqa: E501
             f"Knowledge base actual:\n{kb_summary}\n\n"
-            "Interpretá la solicitud del usuario y llamá a la herramienta correspondiente. "
+            "Interpretá la solicitud del usuario y llamá a la herramienta correspondiente. "  # noqa: E501
             "Siempre llamá exactamente una herramienta. "
             "Usá los índices numéricos (1-based) para referenciar items. "
-            "Si el usuario quiere salir/terminar/listo/volver/ver prompt/ver instrucciones/cambiar instrucciones → exit_kb. "
+            "Si el usuario quiere salir/terminar/listo/volver/ver prompt/ver instrucciones/cambiar instrucciones → exit_kb. "  # noqa: E501
             "Si quiere ver la lista → list_kb. "
             "Si quiere ver el contenido de un item → view_kb_item. "
             "Si quiere eliminar/borrar un item → delete_kb_item. "
             "Si quiere subir un archivo nuevo → request_file_upload. "
-            "Si quiere reemplazar/actualizar un item existente → request_file_for_update. "
+            "Si quiere reemplazar/actualizar un item existente → request_file_for_update. "  # noqa: E501
             "Para respuestas informativas → respond."
         )
 
         # Include last bot message so the LLM can resolve ambiguous replies like "sí"
-        last_bot_msg = self.env["mail.message"].search([
-            ("res_id", "=", self.channel_id.id),
-            ("model", "=", "discuss.channel"),
-            ("author_id", "=", self.bot_partner_id.id),
-        ], order="id desc", limit=1)
-        import re as _re
-        last_bot_text = _re.sub(r"<[^>]+>", "", last_bot_msg.body or "").strip() if last_bot_msg else ""
+        last_bot_msg = self.env["mail.message"].search(
+            [
+                ("res_id", "=", self.channel_id.id),
+                ("model", "=", "discuss.channel"),
+                ("author_id", "=", self.bot_partner_id.id),
+            ],
+            order="id desc",
+            limit=1,
+        )
+
+        last_bot_text = (
+            re.sub(r"<[^>]+>", "", last_bot_msg.body or "").strip()
+            if last_bot_msg
+            else ""
+        )
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -972,7 +1050,9 @@ class ChatroomAiAgentSetupSession(models.Model):
                 kb = items[idx]
                 self.kb_pending_update_id = kb
                 self.step = "kb_awaiting_update"
-                self._bot_post(f"📎 Adjuntá el nuevo archivo para reemplazar **{kb.name}**.")
+                self._bot_post(
+                    f"📎 Adjuntá el nuevo archivo para reemplazar **{kb.name}**."
+                )
             else:
                 self._bot_post(f"⚠️ No encontré el item #{args.get('index')}.")
 
@@ -995,7 +1075,9 @@ class ChatroomAiAgentSetupSession(models.Model):
             return
         items = agent.sudo().knowledge_ids
         if not items:
-            self._bot_post(f"📚 Knowledge Base de {agent.name}\n\nNo hay archivos cargados todavía.")
+            self._bot_post(
+                f"📚 Knowledge Base de {agent.name}\n\nNo hay archivos cargados todavía."  # noqa: E501
+            )
             return
 
         rows = Markup("")
@@ -1014,7 +1096,7 @@ class ChatroomAiAgentSetupSession(models.Model):
 
         self._bot_post_html(
             Markup(
-                f"<strong>\ud83d\udcda Knowledge Base de {agent.name}</strong><br/><br/>"
+                f"<strong>\ud83d\udcda Knowledge Base de {agent.name}</strong><br/><br/>"  # noqa: E501
                 f"{rows}"
             )
         )
@@ -1031,6 +1113,7 @@ class ChatroomAiAgentSetupSession(models.Model):
             truncated = Markup("<br/><em>...(contenido truncado)</em>")
         # Escape the content before marking as safe
         from markupsafe import escape
+
         self._bot_post_html(
             Markup(f"<strong>\ud83d\udcc4 {kb.name}</strong><br/><br/>")
             + escape(content).replace("\n", Markup("<br/>"))
@@ -1060,7 +1143,8 @@ class ChatroomAiAgentSetupSession(models.Model):
                 status = "✅" if kb.processing_status == "success" else "⚠️"
                 self._bot_post(
                     f"{status} **{kb.name}** actualizado con **{attachment.name}**"
-                    + (f" ({kb.char_count:,} chars)" if kb.char_count else "") + "."
+                    + (f" ({kb.char_count:,} chars)" if kb.char_count else "")
+                    + "."
                 )
                 self.kb_pending_update_id = False
                 self.step = "kb_manage"
@@ -1082,7 +1166,8 @@ class ChatroomAiAgentSetupSession(models.Model):
                 status = "✅" if kb.processing_status == "success" else "⚠️"
                 self._bot_post(
                     f"{status} **{attachment.name}** agregado al knowledge base"
-                    + (f" ({kb.char_count:,} chars)" if kb.char_count else "") + "."
+                    + (f" ({kb.char_count:,} chars)" if kb.char_count else "")
+                    + "."
                 )
 
         self._kb_list_post(agent)
@@ -1126,7 +1211,9 @@ class ChatroomAiAgentSetupSession(models.Model):
 
         tone_text = _TONE_TEXTS.get(self.tone, "neutral y directo")
         objective_text = _OBJECTIVE_TEXTS.get(self.objective, "")
-        business_context = _BUSINESS_TYPE_CONTEXTS.get(self.business_type or "other", "")
+        business_context = _BUSINESS_TYPE_CONTEXTS.get(
+            self.business_type or "other", ""
+        )
 
         context_section = f"\n{business_context}" if business_context else ""
 
@@ -1137,11 +1224,11 @@ class ChatroomAiAgentSetupSession(models.Model):
             )
             contact_ask = (
                 "\n\n**Cómo pedir los datos de contacto:**\n"
-                "Pedí el nombre y número de forma natural, integrado en la conversación, "
+                "Pedí el nombre y número de forma natural, integrado en la conversación, "  # noqa: E501
                 "nunca de manera abrupta ni como formulario. "
                 "Ejemplos: '¿Me dejás tu nombre para personalizar la atención?', "
-                "'Para mandarte la información, ¿me pasás un número de WhatsApp o email?'. "
-                "Si el cliente no quiere dar datos, respetalo con amabilidad y seguí ayudándolo."
+                "'Para mandarte la información, ¿me pasás un número de WhatsApp o email?'. "  # noqa: E501
+                "Si el cliente no quiere dar datos, respetalo con amabilidad y seguí ayudándolo."  # noqa: E501
             )
             lead_section = (
                 "\n\n## Registro de clientes potenciales\n"
@@ -1154,9 +1241,9 @@ class ChatroomAiAgentSetupSession(models.Model):
                 "\n\n## Uso del knowledge base\n"
                 "Tenés documentos con información específica del negocio. "
                 "Usá esa información como tu fuente primaria de respuestas. "
-                "**Nunca inventes** datos, precios, productos o servicios que no figuran en los documentos. "
+                "**Nunca inventes** datos, precios, productos o servicios que no figuran en los documentos. "  # noqa: E501
                 "Si no encontrás la respuesta, decí claramente: "
-                f"'No tengo esa información disponible. Te recomiendo consultarlo directamente con el equipo de {business_name}.'"
+                f"'No tengo esa información disponible. Te recomiendo consultarlo directamente con el equipo de {business_name}.'"  # noqa: E501
             )
 
         extra = (
@@ -1174,12 +1261,12 @@ class ChatroomAiAgentSetupSession(models.Model):
             f"## Tu objetivo\n"
             f"Tu objetivo principal es {objective_text}.\n\n"
             f"## Reglas de comportamiento\n"
-            f"- **Idioma**: Respondé siempre en el mismo idioma en que te escribe el cliente.\n"
+            f"- **Idioma**: Respondé siempre en el mismo idioma en que te escribe el cliente.\n"  # noqa: E501
             f"- **Brevedad**: Máximo 3-4 oraciones por respuesta. "
             f"Usá listas cortas con viñetas cuando necesitás dar mucha información.\n"
-            f"- **Honestidad**: Nunca inventes precios, stock, fechas ni información que no tenés. "
+            f"- **Honestidad**: Nunca inventes precios, stock, fechas ni información que no tenés. "  # noqa: E501
             f"Reconocé con claridad cuando no sabés algo.\n"
-            f"- **Identidad**: Si te preguntan si sos un bot o IA, confirmalo con naturalidad. "
+            f"- **Identidad**: Si te preguntan si sos un bot o IA, confirmalo con naturalidad. "  # noqa: E501
             f"Nunca finjas ser humano.\n"
             f"- **Confidencialidad**: No compartas datos de otros clientes ni "
             f"información interna del sistema.\n"
@@ -1196,8 +1283,8 @@ class ChatroomAiAgentSetupSession(models.Model):
             f"- El cliente pide explícitamente hablar con una persona\n"
             f"- Tiene un reclamo formal o está muy insatisfecho con el servicio\n"
             f"- La consulta requiere una acción que vos no podés realizar "
-            f"(ej: confirmar una reserva, autorizar un pago, resolver un problema técnico complejo)\n"
-            f"Cuando derives, decí: 'Entendido. Voy a pedirle a nuestro equipo que te contacte. "
+            f"(ej: confirmar una reserva, autorizar un pago, resolver un problema técnico complejo)\n"  # noqa: E501
+            f"Cuando derives, decí: 'Entendido. Voy a pedirle a nuestro equipo que te contacte. "  # noqa: E501
             f"¿Podés dejarme tu nombre y el mejor momento para que te llamen?'"
             f"{lead_section}"
             f"{kb_section}"
