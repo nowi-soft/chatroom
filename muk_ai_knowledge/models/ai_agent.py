@@ -41,10 +41,9 @@ class AIAgent(models.Model):
             return base_prompt
         preamble = (
             "\n\n=== KNOWLEDGE BASE ===\n"
-            "The following documents are your primary source of truth for "
-            "questions about this business. When a user asks something covered "
-            "by these documents, answer from them directly — do NOT search the "
-            "Odoo database or call read/search tools.\n\n"
+            "Use the following documents as your authoritative source for "
+            "questions about this business. Answer from them directly when "
+            "the question is covered.\n\n"
         )
         kb_section = preamble + "\n\n".join(blocks)
         return (base_prompt or "") + kb_section
