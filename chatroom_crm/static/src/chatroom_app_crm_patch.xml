@@ -1,6 +1,6 @@
 <templates xml:space="preserve">
     <t
-        t-name="chatroom_ai_crm.chatroom_app_crm_patch"
+        t-name="chatroom_crm.chatroom_app_crm_patch"
         t-inherit="chatroom.ChatroomApp"
         t-inherit-mode="extension"
     >

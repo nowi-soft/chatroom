@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<odoo>
-    <!-- Re-syncs the management agent's tool list whenever the module is installed or upgraded.
-         Safe to run multiple times; idempotent: re-attaches the current MANAGEMENT_TOOLS set
-         to the existing management agent so newly added tools become available without
-         requiring the user to re-test the provider connection. -->
-    <function model="chatroom.ai.provider" name="_ensure_management_setup"/>
-</odoo>
