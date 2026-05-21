@@ -24,6 +24,8 @@
         "security/chatroom_ai_security.xml",
         "security/ir.model.access.csv",
         "data/queue_job_data.xml",
+        "data/chatroom_ai_management_tools_data.xml",
+        "data/chatroom_ai_tools_data.xml",
         "views/chatroom_ai_provider_views.xml",
         "views/chatroom_ai_agent_views.xml",
         "views/chatroom_ai_knowledge_views.xml",
@@ -33,6 +35,7 @@
         "views/res_config_settings_views.xml",
         "wizard/chatroom_ai_tool_test_wizard_views.xml",
         "views/chatroom_menus.xml",
+        "data/chatroom_ai_management_setup.xml",
     ],
     "demo": [],
     "assets": {
@@ -45,4 +48,5 @@
     "installable": True,
     "application": False,
     "auto_install": False,
+    "post_init_hook": "post_init_hook",
 }

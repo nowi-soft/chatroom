@@ -1,12 +1,9 @@
 import base64
-import io
 import logging
 
-import docx
-import pandas as pd
-import PyPDF2
-
 from odoo import api, fields, models
+
+from ..utils.text_extraction import extract_text
 
 _logger = logging.getLogger(__name__)
 
@@ -120,52 +117,7 @@ class ChatroomAIKnowledge(models.Model):
     def _extract_text_from_file(self):
         if not self.file:
             return ""
-
-        file_data = base64.b64decode(self.file)
-        file_name = self.file_name or ""
-
-        if file_name.lower().endswith(".pdf"):
-            try:
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_data))
-                text = ""
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
-                return text.strip()
-            except Exception as e:
-                _logger.error("Error extracting PDF: %s", e)
-                return f"Error processing PDF file: {str(e)}"
-
-        elif file_name.lower().endswith((".txt", ".md", ".csv")):
-            try:
-                return file_data.decode("utf-8")
-            except UnicodeDecodeError:
-                return file_data.decode("latin-1", errors="ignore")
-
-        elif file_name.lower().endswith(".docx"):
-            try:
-                doc = docx.Document(io.BytesIO(file_data))
-                return "\n".join([para.text for para in doc.paragraphs])
-            except Exception as e:
-                _logger.error("Error extracting DOCX: %s", e)
-                return f"Error processing DOCX file: {str(e)}"
-
-        elif file_name.lower().endswith((".xls", ".xlsx")):
-            try:
-                df_dict = pd.read_excel(io.BytesIO(file_data), sheet_name=None)
-
-                text = ""
-                for sheet_name, df in df_dict.items():
-                    text += f"=== Sheet: {sheet_name} ===\n\n"
-                    text += df.to_string(index=False)
-                    text += "\n\n"
-
-                return text.strip()
-            except Exception as e:
-                _logger.error("Error extracting Excel: %s", e)
-                return f"Error processing Excel file: {str(e)}"
-
-        else:
-            return "Unsupported file type"
+        return extract_text(base64.b64decode(self.file), self.file_name or "")
 
     def get_formatted_content(self):
         self.ensure_one()

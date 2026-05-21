@@ -41,14 +41,24 @@ class ChatroomRoom(models.Model):
     )
     ai_error_message = fields.Text()
 
+    is_management_room = fields.Boolean(
+        "Management Room",
+        default=False,
+        readonly=True,
+        help="Special room for AI configuration. Only visible to managers via the AI Setup menu.",
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         rooms = super().create(vals_list)
 
         for room in rooms:
+            if room.is_management_room:
+                continue
             if not room.assigned_to_id:
                 agent = self.env["chatroom.ai.agent"].search(
-                    [("active", "=", True)], limit=1
+                    [("active", "=", True), ("is_management_agent", "=", False)],
+                    limit=1,
                 )
                 if agent:
                     room.write(
@@ -252,11 +262,11 @@ class ChatroomRoom(models.Model):
     def _build_channel_context_block(self):
         self.ensure_one()
 
-        connector = self.connector_id
+        connector = self.connector_id if 'connector_id' in self._fields else False
         connector_type = (
             (connector.connector_type or "unknown").lower() if connector else "unknown"
         )
-        external_id = self.external_id or ""
+        external_id = (self.external_id if 'external_id' in self._fields else '') or ''
 
         lines = ["=== CHANNEL CONTEXT ==="]
         lines.append(f"- Connector type: {connector_type}")
@@ -335,6 +345,19 @@ class ChatroomRoom(models.Model):
             context = context[-max_length:]
             self.ai_summary = f"Previous {len(old_messages)} messages summarized."
 
+        self.write({"ai_context_messages": json.dumps(context)})
+
+    def add_text_to_context(self, text, role="user"):
+        self.ensure_one()
+        context = self._load_context()
+        context.append({
+            "role": role,
+            "content": text,
+            "timestamp": fields.Datetime.now().isoformat(),
+        })
+        max_length = (self.ai_agent_id.max_conversation_length or 20) if self.ai_agent_id else 20
+        if len(context) > max_length:
+            context = context[-max_length:]
         self.write({"ai_context_messages": json.dumps(context)})
 
     def build_context_messages(self):

@@ -15,8 +15,30 @@ patch(ChatroomApp.prototype, {
     setup() {
         super.setup(...arguments);
 
+        this.state.managementRoom = null;
+        this.state.managementUserName = "";
+        this.state.managementUserId = null;
+
         onMounted(async () => {
             await this._loadAIFields();
+            this.state.managementUserName = odoo.session_info?.name || "Manager";
+            this.state.managementUserId =
+                odoo.session_info?.uid || odoo.session_info?.user_id || null;
+
+            const activeProvider = await this.orm.searchCount(
+                "chatroom.ai.provider",
+                [["state", "=", "active"]]
+            );
+            if (!activeProvider) {
+                this.state.managementRoom = null;
+                return;
+            }
+            const mgmtRooms = await this.orm.searchRead(
+                "chatroom.room",
+                [["is_management_room", "=", true]],
+                ["id", "name"]
+            );
+            this.state.managementRoom = mgmtRooms[0] || null;
         });
 
         this.busService.subscribe(
@@ -158,9 +180,8 @@ patch(ChatroomApp.prototype, {
         await this._reloadCurrentRoomAIFields();
     },
 
-    async restoreRoom() {
+    async restoreRoom(roomId) {
         await super.restoreRoom(...arguments);
-
         await this._reloadCurrentRoomAIFields();
     },
 
@@ -179,6 +200,41 @@ patch(ChatroomApp.prototype, {
             this.state.currentRoom.ai_conversation_state =
                 updatedRoom.ai_conversation_state;
         }
+    },
+
+    async openManagementRoom() {
+        if (!this.state.managementRoom) return;
+        const [room] = await this.orm.read(
+            "chatroom.room",
+            [this.state.managementRoom.id],
+            ["id", "name", "state", "partner_ids", "ai_enabled", "ai_agent_id", "ai_conversation_state"]
+        );
+        if (room) {
+            this.state.currentRoom = room;
+            await this.loadMessages(room.id);
+            setTimeout(() => this.scrollToBottom(), 100);
+        }
+    },
+
+    async sendMessage() {
+        if (this.state.managementRoom?.id === this.state.currentRoom?.id) {
+            if (!this.state.messageInput.trim() || !this.state.currentRoom) return;
+            const vals = {
+                room_id: this.state.currentRoom.id,
+                body: this.state.messageInput,
+                direction: "incoming",
+                author_name: this.state.managementUserName,
+            };
+            if (this.state.managementUserId) {
+                vals.user_id = this.state.managementUserId;
+            }
+            await this.orm.create("chatroom.message", [vals]);
+            this.state.messageInput = "";
+            await this.loadMessages(this.state.currentRoom.id);
+            setTimeout(() => this.scrollToBottom(), 100);
+            return;
+        }
+        return super.sendMessage(...arguments);
     },
 
     async onAIInterventionNeeded(payload) {
@@ -252,6 +308,41 @@ patch(ChatroomApp.prototype, {
                       : "file"
                 : messageType;
 
+        if (this.state.managementRoom?.id === this.state.currentRoom?.id) {
+            try {
+                const formData = new FormData();
+                formData.append("files", file);
+                formData.append("csrf_token", odoo.csrf_token);
+                const uploadResponse = await fetch("/chatroom/upload_file", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (!uploadResponse.ok) throw new Error("File upload failed");
+                const uploadResult = await uploadResponse.json();
+                const attachment = uploadResult.attachments[0];
+                const vals = {
+                    room_id: this.state.currentRoom.id,
+                    body: "",
+                    direction: "incoming",
+                    message_type: finalMessageType,
+                    attachment_id: attachment.id,
+                    filename: file.name,
+                    mime_type: file.type,
+                    author_name: this.state.managementUserName,
+                };
+                if (this.state.managementUserId) {
+                    vals.user_id = this.state.managementUserId;
+                }
+                await this.orm.create("chatroom.message", [vals]);
+                await this.loadMessages(this.state.currentRoom.id);
+                setTimeout(() => this.scrollToBottom(), 100);
+            } catch (error) {
+                console.error("Error uploading file:", error);
+                this.notification.add("Failed to upload file", {type: "danger"});
+            }
+            return;
+        }
+
         if (finalMessageType === "audio") {
             try {
                 const formData = new FormData();
@@ -310,7 +401,6 @@ patch(ChatroomApp.prototype, {
 
     async loadChats() {
         await super.loadChats(...arguments);
-
         await this._loadAIFields();
     },
 

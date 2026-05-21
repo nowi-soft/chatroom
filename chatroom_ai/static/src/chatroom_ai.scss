@@ -108,6 +108,32 @@
     }
 }
 
+/* AI Setup button at the bottom of the chatroom sidebar */
+.ai-setup-sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    border-top: 1px solid var(--border-color, #dee2e6);
+    background: color-mix(in srgb, var(--o-brand-primary) 6%, var(--o-view-background-color));
+    color: var(--o-brand-primary);
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: background 0.15s;
+
+    &:hover {
+        background: color-mix(in srgb, var(--o-brand-primary) 12%, var(--o-view-background-color));
+    }
+
+    &.active {
+        background: color-mix(in srgb, var(--o-brand-primary) 18%, var(--o-view-background-color));
+        font-weight: 700;
+    }
+
+    i { font-size: 1.1em; }
+}
+
 /* AI Status in form views */
 .o_form_statusbar .badge {
     margin-left: 10px;

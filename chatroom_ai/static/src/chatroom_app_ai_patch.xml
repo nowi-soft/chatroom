@@ -6,6 +6,18 @@
         t-inherit="chatroom.ChatroomApp"
         t-inherit-mode="extension"
     >
+        <xpath expr="//div[@class='chatroom-sidebar']" position="inside">
+            <div
+                t-if="state.managementRoom"
+                class="ai-setup-sidebar-btn"
+                t-att-class="{'active': state.currentRoom?.id === state.managementRoom?.id}"
+                t-on-click="openManagementRoom"
+            >
+                <i class="fa fa-robot"/>
+                <span>AI Setup</span>
+            </div>
+        </xpath>
+
         <xpath
             expr="//t[@t-foreach='state.myChats']/div[@class='chat-item']"
             position="attributes"
@@ -38,7 +50,7 @@
             position="after"
         >
             <div class="header-center">
-                <div class="ai-controls" t-if="state.currentRoom">
+                <div class="ai-controls" t-if="state.currentRoom and state.currentRoom.id !== state.managementRoom?.id">
                     <div
                         t-if="!state.currentRoom.ai_enabled"
                         class="d-flex align-items-center gap-2"

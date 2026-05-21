@@ -3,9 +3,12 @@ import logging
 
 import requests
 
-from odoo import fields, models
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
+
+MAX_TOOL_ITERATIONS = 20
 
 
 class ChatroomAIAgent(models.Model):
@@ -20,7 +23,7 @@ class ChatroomAIAgent(models.Model):
     provider_id = fields.Many2one(
         "chatroom.ai.provider",
         string="AI Provider",
-        required=True,
+        required=False,
         domain=[("state", "=", "active")],
     )
     system_prompt = fields.Text(
@@ -64,6 +67,21 @@ class ChatroomAIAgent(models.Model):
         ),
     )
 
+    is_management_agent = fields.Boolean(
+        "Management Agent",
+        default=False,
+        readonly=True,
+        help="Internal agent that handles AI configuration via the management room.",
+    )
+
+    @api.constrains("provider_id", "is_management_agent")
+    def _check_provider_required(self):
+        for agent in self:
+            if not agent.is_management_agent and not agent.provider_id:
+                raise ValidationError(
+                    "AI Provider is required for customer-facing agents."
+                )
+
     def should_respond_to_room(self, room):
         self.ensure_one()
 
@@ -71,12 +89,6 @@ class ChatroomAIAgent(models.Model):
             return False
 
         return not room.assigned_to_id
-
-    def action_open_setup_wizard(self):
-        self.ensure_one()
-        return self.env["chatroom.ai.agent.setup.session"].action_start_setup(
-            agent_id=self.id
-        )
 
     def get_or_create_conversation(self, room):
         self.ensure_one()
@@ -147,8 +159,6 @@ class ChatroomAIAgent(models.Model):
         agent = room.ai_agent_id or self
 
         try:
-            context_messages = room.build_context_messages()
-
             tools = None
             if agent.tool_ids:
                 tools = [
@@ -156,28 +166,27 @@ class ChatroomAIAgent(models.Model):
                     for tool in agent.tool_ids
                 ]
 
-            result = agent.provider_id.generate_completion(
-                messages=context_messages,
-                tools=tools,
-            )
-
-            has_content = bool((result or {}).get("content"))
-            has_tool_calls = bool((result or {}).get("tool_calls"))
-
-            if not result or (not has_content and not has_tool_calls):
-                _logger.warning(
-                    "AI response empty or invalid for room %s. "
-                    "Result: %s, Has content: %s, Has tool calls: %s",
-                    room.name,
-                    result,
-                    has_content,
-                    has_tool_calls,
+            result = None
+            for iteration in range(MAX_TOOL_ITERATIONS):
+                result = agent.provider_id.generate_completion(
+                    messages=room.build_context_messages(),
+                    tools=tools,
                 )
-                return
 
-            if result.get("tool_calls"):
+                if not result:
+                    _logger.warning(
+                        "AI response empty for room %s (iteration %d)",
+                        room.name,
+                        iteration,
+                    )
+                    return
+
+                if not result.get("tool_calls"):
+                    break
+
                 room.add_assistant_message_with_tools(
-                    content=result.get("content"), tool_calls=result.get("tool_calls")
+                    content=result.get("content"),
+                    tool_calls=result.get("tool_calls"),
                 )
 
                 tool_results = []
@@ -192,20 +201,14 @@ class ChatroomAIAgent(models.Model):
                     )
 
                 room.add_tool_results(tool_results)
+            else:
+                _logger.warning(
+                    "Reached MAX_TOOL_ITERATIONS (%d) for room %s without final answer",
+                    MAX_TOOL_ITERATIONS,
+                    room.name,
+                )
 
-                try:
-                    result = agent.provider_id.generate_completion(
-                        messages=room.build_context_messages(),
-                    )
-                except Exception as follow_up_error:
-                    _logger.warning(
-                        "Follow-up completion after tools failed for room %s: %s",
-                        room.name,
-                        follow_up_error,
-                    )
-                    return
-
-            if not result.get("content"):
+            if not result or not result.get("content"):
                 return
 
             message_vals = {

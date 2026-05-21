@@ -3,6 +3,8 @@ import logging
 
 from odoo import api, fields, models
 
+from ..utils.text_extraction import extract_text_from_attachment, is_supported
+
 _logger = logging.getLogger(__name__)
 
 
@@ -206,9 +208,33 @@ class ChatroomMessage(models.Model):
             agent.get_or_create_conversation(room)
             has_unsupported_messages = False
             messages_added = False
+            is_management = getattr(room, 'is_management_room', False)
 
             for message in room_messages.sorted("create_date", reverse=False):
                 if message.message_type not in ["text", "audio"]:
+                    if is_management and message.attachment_id:
+                        att = message.attachment_id
+                        fname = message.filename or att.name or "file"
+                        if is_supported(fname):
+                            extracted = extract_text_from_attachment(att)
+                            char_count = len(extracted or "")
+                            room.add_text_to_context(
+                                f"[Attachment received: {fname}, "
+                                f"message_id={message.id}, "
+                                f"mime={message.mime_type or att.mimetype or 'unknown'}, "
+                                f"~{char_count} chars extractable. "
+                                f"Use create_knowledge_from_attachment with this "
+                                f"message_id to persist it as a knowledge base.]"
+                            )
+                            messages_added = True
+                            continue
+                        room.add_text_to_context(
+                            f"[Attachment received: {fname} (unsupported type). "
+                            f"Cannot extract text. Ask the user to send a "
+                            f"PDF, DOCX, XLS/XLSX, TXT, MD or CSV.]"
+                        )
+                        messages_added = True
+                        continue
                     has_unsupported_messages = True
                     continue
 
@@ -221,7 +247,7 @@ class ChatroomMessage(models.Model):
             if messages_added:
                 agent._generate_and_send_response(room.id)
 
-            if has_unsupported_messages and agent.unsupported_media_message:
+            if has_unsupported_messages and not is_management and agent.unsupported_media_message:
                 self.env["chatroom.message"].sudo().create(
                     {
                         "room_id": room.id,
@@ -257,7 +283,6 @@ class ChatroomMessage(models.Model):
                     "ai_pending_processing": False,
                 }
             )
-
             room.write({"needs_attention": True})
             raise
 

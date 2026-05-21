@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+
+        <record id="tool_get_model_schema" model="chatroom.ai.tool">
+            <field name="name">Get Model Schema</field>
+            <field name="code_name">get_model_schema</field>
+            <field name="sequence">10</field>
+            <field name="is_management_tool" eval="False"/>
+            <field
+                name="description"
+            >Returns the settable fields of any Odoo model with their types, labels, required status, and selection options. Pass the technical model name (e.g. "crm.lead", "res.partner", "sale.order"). Call this before any write operation to know what fields are available.</field>
+            <field
+                name="parameters_schema"
+            >{"type": "object", "properties": {"model": {"type": "string", "description": "Technical Odoo model name, e.g. \"crm.lead\", \"res.partner\", \"sale.order\""}}, "required": ["model"]}</field>
+            <field name="python_code">
+model_name = params.get('model', '').strip()
+if not model_name or model_name not in env:
+    result = {'success': False, 'error': f'Model "{model_name}" not found.'}
+else:
+    EXCLUDED = {
+        'id', 'create_date', 'write_date', 'create_uid', 'write_uid',
+        'message_ids', 'message_follower_ids', 'message_partner_ids',
+        'activity_ids', 'website_message_ids', 'activity_state',
+        'activity_summary', '__last_update',
+    }
+    ALLOWED_TYPES = {'char', 'text', 'integer', 'float', 'monetary', 'boolean',
+                     'selection', 'date', 'datetime'}
+
+    all_fields = env[model_name].fields_get(
+        attributes=['string', 'type', 'required', 'readonly', 'help', 'selection']
+    )
+    schema = {}
+    for fname, finfo in all_fields.items():
+        if fname in EXCLUDED or fname.startswith('_'):
+            continue
+        if finfo.get('readonly'):
+            continue
+        if finfo['type'] not in ALLOWED_TYPES:
+            continue
+        entry = {'label': finfo['string'], 'type': finfo['type']}
+        if finfo.get('required'):
+            entry['required'] = True
+        if finfo.get('help'):
+            entry['help'] = finfo['help']
+        if finfo['type'] == 'selection':
+            entry['options'] = {k: v for k, v in (finfo.get('selection') or [])}
+        schema[fname] = entry
+
+    result = {'success': True, 'model': model_name, 'fields': schema}
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,15 +1,4 @@
 <odoo>
-    <!-- Server action to launch Discuss-based agent setup -->
-    <record id="action_chatroom_ai_agent_setup_discuss" model="ir.actions.server">
-        <field name="name">New Agent Setup</field>
-        <field
-            name="model_id"
-            ref="chatroom_ai.model_chatroom_ai_agent_setup_session"
-        />
-        <field name="state">code</field>
-        <field name="code">action = model.action_start_setup()</field>
-    </record>
-
     <menuitem
         id="menu_chatroom_ai"
         name="AI Agents"
@@ -48,13 +37,5 @@
         parent="menu_chatroom_ai"
         action="action_chatroom_ai_tool"
         sequence="40"
-    />
-
-    <menuitem
-        id="menu_chatroom_ai_agent_setup"
-        name="New Agent Setup"
-        parent="menu_chatroom_ai"
-        action="chatroom_ai.action_chatroom_ai_agent_setup_discuss"
-        sequence="5"
     />
 </odoo>

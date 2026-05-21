@@ -46,6 +46,13 @@ class ChatroomAITool(models.Model):
         help="Example of how AI might call this tool",
     )
 
+    is_management_tool = fields.Boolean(
+        "Management Tool",
+        default=False,
+        readonly=True,
+        help="Internal tool used by the AI Configuration Assistant. Not visible to users.",
+    )
+
     @api.constrains("code_name")
     def _check_code_name(self):
         for tool in self:

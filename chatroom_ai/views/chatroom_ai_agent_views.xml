@@ -39,14 +39,7 @@
         <field name="model">chatroom.ai.agent</field>
         <field name="arch" type="xml">
             <form string="AI Agent">
-                <header>
-                    <button
-                        name="action_open_setup_wizard"
-                        type="object"
-                        string="Reconfigure with Chat"
-                        invisible="not id"
-                    />
-                </header>
+                <header />
                 <sheet>
                     <div class="oe_button_box" name="button_box" />
                     <div class="oe_title">
@@ -80,7 +73,7 @@
                         </page>
 
                         <page string="Tools &amp; Actions" name="tools">
-                            <field name="tool_ids">
+                            <field name="tool_ids" domain="[('is_management_tool', '=', False)]">
                                 <list>
                                     <field name="name" />
                                     <field name="code_name" />
@@ -98,6 +91,7 @@
         <field name="name">AI Agents</field>
         <field name="res_model">chatroom.ai.agent</field>
         <field name="view_mode">list,form</field>
+        <field name="domain">[('is_management_agent', '=', False)]</field>
         <field name="context">{'search_default_active': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
