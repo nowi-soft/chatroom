@@ -45,10 +45,12 @@ class ChatroomRoom(models.Model):
     def _compute_message_count(self):
         if not self.ids:
             return
-        counts = self.env["chatroom.message"].read_group(
-            [("room_id", "in", self.ids)], ["room_id"], ["room_id"]
+        counts = self.env["chatroom.message"]._read_group(
+            [("room_id", "in", self.ids)],
+            groupby=["room_id"],
+            aggregates=["__count"],
         )
-        count_map = {r["room_id"][0]: r["room_id_count"] for r in counts}
+        count_map = {room.id: count for room, count in counts}
         for room in self:
             room.message_count = count_map.get(room.id, 0)
 
@@ -129,8 +131,8 @@ class ChatroomRoom(models.Model):
                 "last_message_preview": room.last_message_preview,
             }
 
-            chatroom_users = self.env.ref("chatroom.group_chatroom_user").users
-            chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").users
+            chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
+            chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
             all_chatroom_users = chatroom_users | chatroom_managers
 
             if room.state in ["assigned", "unassigned"]:

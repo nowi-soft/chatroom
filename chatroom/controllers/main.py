@@ -5,7 +5,7 @@ from odoo.http import request
 
 
 class ChatroomController(http.Controller):
-    @http.route("/chatroom/rooms", type="json", auth="user")
+    @http.route("/chatroom/rooms", type="jsonrpc", auth="user")
     def get_rooms(self, **kw):
         rooms = request.env["chatroom.room"].search(
             [("state", "!=", "closed")], order="last_message_date desc"
@@ -28,7 +28,7 @@ class ChatroomController(http.Controller):
             for room in rooms
         ]
 
-    @http.route("/chatroom/messages/<int:room_id>", type="json", auth="user")
+    @http.route("/chatroom/messages/<int:room_id>", type="jsonrpc", auth="user")
     def get_messages(self, room_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():
@@ -56,7 +56,7 @@ class ChatroomController(http.Controller):
             for msg in messages
         ]
 
-    @http.route("/chatroom/send", type="json", auth="user")
+    @http.route("/chatroom/send", type="jsonrpc", auth="user")
     def send_message(self, room_id, body, product_id=None, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():
@@ -80,7 +80,7 @@ class ChatroomController(http.Controller):
             "message_id": message.id,
         }
 
-    @http.route("/chatroom/room/<int:room_id>/create_partner", type="json", auth="user")
+    @http.route("/chatroom/room/<int:room_id>/create_partner", type="jsonrpc", auth="user")
     def create_partner_from_chat(self, room_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():
@@ -92,7 +92,7 @@ class ChatroomController(http.Controller):
             "success": True,
         }
 
-    @http.route("/chatroom/room/<int:room_id>/link_record", type="json", auth="user")
+    @http.route("/chatroom/room/<int:room_id>/link_record", type="jsonrpc", auth="user")
     def link_record(self, room_id, field_name, record_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():
@@ -113,7 +113,7 @@ class ChatroomController(http.Controller):
             "related_records": room.get_related_records(),
         }
 
-    @http.route("/chatroom/room/<int:room_id>/unlink_record", type="json", auth="user")
+    @http.route("/chatroom/room/<int:room_id>/unlink_record", type="jsonrpc", auth="user")
     def unlink_record(self, room_id, field_name, record_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():
@@ -135,7 +135,7 @@ class ChatroomController(http.Controller):
         }
 
     @http.route(
-        "/chatroom/room/<int:room_id>/get_related_records", type="json", auth="user"
+        "/chatroom/room/<int:room_id>/get_related_records", type="jsonrpc", auth="user"
     )
     def get_related_records(self, room_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
@@ -212,7 +212,7 @@ class ChatroomController(http.Controller):
         except Exception:
             return request.not_found()
 
-    @http.route("/chatroom/quick_messages", type="json", auth="user")
+    @http.route("/chatroom/quick_messages", type="jsonrpc", auth="user")
     def get_quick_messages(self, **kw):
         quick_messages = request.env["chatroom.quick.message"].search(
             [("active", "=", True)], order="sequence, name"

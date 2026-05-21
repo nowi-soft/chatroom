@@ -1,10 +1,16 @@
 <odoo>
+    <record id="res_groups_privilege_chatroom" model="res.groups.privilege">
+        <field name="name">ChatRoom</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="module_category_chatroom" />
+    </record>
+
     <record id="group_chatroom_user" model="res.groups">
         <field name="name">ChatRoom User</field>
         <field
             name="comment"
         >Can access and manage assigned chat rooms and messages</field>
-        <field name="category_id" ref="module_category_chatroom" />
+        <field name="privilege_id" ref="res_groups_privilege_chatroom" />
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />
     </record>
 
@@ -13,10 +19,10 @@
         <field
             name="comment"
         >Can manage all chat rooms, messages, and configuration</field>
-        <field name="category_id" ref="module_category_chatroom" />
+        <field name="privilege_id" ref="res_groups_privilege_chatroom" />
         <field name="implied_ids" eval="[(4, ref('group_chatroom_user'))]" />
         <field
-            name="users"
+            name="user_ids"
             eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"
         />
     </record>
