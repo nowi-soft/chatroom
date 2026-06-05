@@ -12,6 +12,13 @@
                                     <span class="badge" t-esc="state.myChats.length" />
                                     <button
                                         class="btn btn-sm btn-link header-btn"
+                                        t-on-click="openAiCreator"
+                                        title="Configurar AI"
+                                    >
+                                        <i class="fa fa-magic" />
+                                    </button>
+                                    <button
+                                        class="btn btn-sm btn-link header-btn"
                                         t-on-click="toggleClosedChats"
                                         title="View Closed Chats"
                                     >
@@ -28,7 +35,8 @@
                                     <div
                                         class="chat-item"
                                         t-att-class="{
-                                            active: state.currentRoom?.id === chat.id
+                                            active: state.currentRoom?.id === chat.id,
+                                            'needs-attention': chat.needs_attention,
                                         }"
                                         t-on-click="() => this.selectChat(chat)"
                                     >
@@ -59,6 +67,14 @@
                                             <div class="chat-assigned-to">
                                                 <i class="fa fa-user" />
                                                 <span t-esc="chat.assigned_to_id[1]" />
+                                            </div>
+                                            <div
+                                                t-if="chat.muk_ai_agent_id"
+                                                class="chat-ai-badge"
+                                                t-att-class="{'ai-active': chat.ai_active, 'ai-paused': !chat.ai_active}"
+                                                t-att-title="'AI: ' + (chat.muk_ai_agent_id[1] || '')"
+                                            >
+                                                <i class="fa fa-android" />
                                             </div>
                                             <div
                                                 t-if="chat.connector_id"
@@ -93,7 +109,8 @@
                                     <div
                                         class="chat-item"
                                         t-att-class="{
-                                            active: state.currentRoom?.id === chat.id
+                                            active: state.currentRoom?.id === chat.id,
+                                            'needs-attention': chat.needs_attention,
                                         }"
                                         t-on-click="() => this.selectChat(chat)"
                                     >
@@ -261,6 +278,15 @@
                                         </t>
                                     </t>
 
+                                    <button
+                                        t-if="state.currentRoom.muk_ai_agent_id"
+                                        class="btn btn-sm ai-toggle-btn"
+                                        t-att-class="state.currentRoom.ai_active ? 'btn-success' : 'btn-outline-secondary'"
+                                        t-on-click="() => this.toggleAiActive(state.currentRoom)"
+                                        t-att-title="state.currentRoom.ai_active ? 'AI activo — click para pausar' : 'AI pausado — click para activar'"
+                                    >
+                                        <i class="fa fa-android" />
+                                    </button>
                                     <button
                                         class="btn btn-sm btn-link"
                                         t-on-click="shareChatLink"

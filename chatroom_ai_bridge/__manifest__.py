@@ -36,6 +36,11 @@ Components:
     "demo": [
         "demo/fictional_business.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "chatroom_ai_bridge/static/src/**/*.js",
+        ],
+    },
     "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,

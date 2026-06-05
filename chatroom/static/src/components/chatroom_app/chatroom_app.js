@@ -116,6 +116,15 @@ export class ChatroomApp extends Component {
         }
 
         this.state.unassignedChats = rooms.filter((r) => !r.assigned_to_id);
+
+        await this._loadRoomAiData([
+            ...this.state.myChats,
+            ...this.state.unassignedChats,
+        ]);
+    }
+
+    async _loadRoomAiData(_rooms) {
+        // Hook: overridden by chatroom_ai_bridge patch to load ai_active + muk_ai_agent_id
     }
 
     async loadClosedChats() {
@@ -440,6 +449,14 @@ export class ChatroomApp extends Component {
         await this.orm.call("chatroom.room", "notify_room_updated", [[roomId]]);
         await this.loadChats();
         this.notification.add("Chat reopened as unassigned", {type: "success"});
+    }
+
+    async toggleAiActive(_room) {
+        // Overridden by chatroom_ai_bridge patch
+    }
+
+    openAiCreator() {
+        window.open("/odoo/ai", "_blank");
     }
 
     toggleClosedChats() {

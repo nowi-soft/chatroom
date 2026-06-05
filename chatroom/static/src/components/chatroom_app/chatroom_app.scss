@@ -899,3 +899,40 @@
         font-size: 14px;
     }
 }
+
+// ── AI feature styles ─────────────────────────────────────────────────────────
+
+.chat-item.needs-attention {
+    border-left: 3px solid var(--danger, #dc3545);
+    background: rgba(220, 53, 69, 0.04);
+
+    .chat-name {
+        font-weight: 700;
+    }
+}
+
+.chat-ai-badge {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--secondary, #6c757d);
+    transition: color 0.2s;
+
+    &.ai-active {
+        color: var(--success, #198754);
+    }
+
+    &.ai-paused {
+        opacity: 0.45;
+    }
+}
+
+.ai-toggle-btn {
+    font-size: 13px;
+    padding: 2px 8px;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+
+    &.btn-success {
+        color: #fff;
+    }
+}

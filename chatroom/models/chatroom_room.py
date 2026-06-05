@@ -124,11 +124,13 @@ class ChatroomRoom(models.Model):
                 if room.assigned_to_id
                 else False,
                 "state": room.state,
+                "needs_attention": room.needs_attention,
                 "message_count": room.message_count,
                 "last_message_date": room.last_message_date.isoformat()
                 if room.last_message_date
                 else False,
                 "last_message_preview": room.last_message_preview,
+                **room._room_updated_payload_extras(),
             }
 
             chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
@@ -145,6 +147,11 @@ class ChatroomRoom(models.Model):
             for user in users_to_notify:
                 if user.partner_id:
                     user.partner_id._bus_send("chatroom/room_updated", payload)
+
+    def _room_updated_payload_extras(self):
+        """Hook for extension modules to inject extra fields into the bus payload."""
+        self.ensure_one()
+        return {}
 
     def notify_room_updated(self):
         return self._notify_room_updated()

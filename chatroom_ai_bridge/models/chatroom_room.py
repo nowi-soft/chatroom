@@ -31,6 +31,18 @@ class ChatroomRoom(models.Model):
         ),
     )
 
+    def _room_updated_payload_extras(self):
+        self.ensure_one()
+        return {"ai_active": self.ai_active}
+
+    def write(self, vals):
+        ai_fields = {"ai_active", "needs_attention"}
+        needs_notify = bool(ai_fields & set(vals))
+        result = super().write(vals)
+        if needs_notify:
+            self._notify_room_updated()
+        return result
+
     def _ensure_ai_session(self):
         """Return the active muk_ai.session for this room, creating a new one
         if the current session is absent or in a terminal state."""
