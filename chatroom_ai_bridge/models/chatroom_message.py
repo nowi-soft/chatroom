@@ -16,13 +16,13 @@ class ChatroomMessage(models.Model):
         return messages
 
     def _maybe_dispatch_to_ai(self):
-        """If this is an incoming message on a room with an AI agent assigned,
+        """If this is an incoming message on a room with an active AI agent,
         forward it to the room's muk_ai.session."""
         self.ensure_one()
         if self.direction != "incoming":
             return
         room = self.room_id
-        if not room or not room.muk_ai_agent_id:
+        if not room or not room.muk_ai_agent_id or not room.ai_active:
             return
         try:
             session = room._ensure_ai_session()

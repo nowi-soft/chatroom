@@ -4,6 +4,8 @@ from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
+_TERMINAL_STATES = {"stopped", "error", "done"}
+
 
 class ChatroomRoom(models.Model):
     _inherit = "chatroom.room"
@@ -11,38 +13,51 @@ class ChatroomRoom(models.Model):
     muk_ai_agent_id = fields.Many2one(
         "muk_ai.agent",
         string="AI Agent",
-        help=(
-            "AI agent that responds to incoming messages in this room. "
-            "Leave empty to disable auto-response."
-        ),
+        help="AI agent that responds to incoming messages. Leave empty to disable.",
     )
     muk_ai_session_id = fields.Many2one(
         "muk_ai.session",
         string="AI Session",
         readonly=True,
         copy=False,
-        help="Active muk_ai.session running for this room.",
+    )
+    ai_active = fields.Boolean(
+        string="AI Responding",
+        default=True,
+        help=(
+            "Uncheck to stop AI auto-responses and handle this "
+            "conversation manually. Automatically turned off when "
+            "the AI escalates to a human operator."
+        ),
     )
 
     def _ensure_ai_session(self):
-        """Create (or return) the muk_ai.session that drives this room."""
+        """Return the active muk_ai.session for this room, creating a new one
+        if the current session is absent or in a terminal state."""
         self.ensure_one()
-        if self.muk_ai_session_id and self.muk_ai_session_id.state not in (
-            "stopped",
-            "error",
-        ):
-            return self.muk_ai_session_id
+        session = self.muk_ai_session_id
+        if session and session.state not in _TERMINAL_STATES:
+            return session
         bot = self.env.ref("chatroom_ai_bridge.user_chatroom_bot")
-        session = (
+        partner = self.partner_ids[:1]
+        new_session = (
             self.env["muk_ai.session"]
             .with_user(bot)
             .sudo()
             .create({
-                "name": f"Chatroom Room #{self.id} — {self.name or ''}".strip(" —"),
+                "name": f"Chatroom #{self.id} — {self.name or ''}".strip(" —"),
                 "agent_id": self.muk_ai_agent_id.id,
                 "override_approval_mode": "off",
-                "user_context": {"chatroom_room_id": self.id},
+                "user_context": {
+                    "chatroom_room_id": self.id,
+                    "customer_name": partner.name or self.name or "",
+                    "customer_phone": partner.phone or "",
+                },
             })
         )
-        self.sudo().muk_ai_session_id = session.id
-        return session
+        self.sudo().muk_ai_session_id = new_session.id
+        return new_session
+
+    def action_toggle_ai(self):
+        for room in self:
+            room.ai_active = not room.ai_active

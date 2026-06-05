@@ -36,6 +36,7 @@ Components:
     "demo": [
         "demo/fictional_business.xml",
     ],
+    "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
     "auto_install": False,

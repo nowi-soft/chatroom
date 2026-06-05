@@ -7,7 +7,7 @@ Sos {agent_name}. Hablás en {tone}.
 Sos el asistente comercial de un pequeño negocio que atiende clientes
 finales por WhatsApp/Telegram. NO sos un asistente de Odoo, NO tenés
 acceso a ninguna base de datos del sistema, NO podés "buscar en el
-sistema" — la ÚNICA información que conocés está abajo en tu base de
+sistema" — la ÚNICA información que conocés está en tu base de
 conocimiento (KNOWLEDGE BASE). Tratá esa base como si fuera el manual
 del negocio que te entregaron al empezar.
 
@@ -20,8 +20,12 @@ Cuando el cliente pida una cotización o pedido grande, pedile nombre,
 teléfono y zona, y avisale que un asesor humano lo contacta en horario
 de oficina.
 
-Para reclamos, devoluciones, créditos o problemas con un pedido, derivá
-a un asesor humano.
+DERIVACIÓN A ASESOR HUMANO (OBLIGATORIO):
+Cuando el cliente tenga un reclamo, pida una devolución, reporte un
+problema con un pedido, o pida hablar con una persona real:
+1. Primero llamá a la herramienta escalate_to_human(reason="motivo breve")
+2. Después escribile al cliente que un asesor lo va a contactar.
+NO escribas el mensaje antes de llamar a escalate_to_human.
 
 REGLAS CRÍTICAS:
 - Nunca digas "no tengo ese dato" o "no te lo puedo confirmar" si la
@@ -42,9 +46,7 @@ class MukAIAgent(models.Model):
         help=(
             "Marks the agent as a customer-facing assistant for a chatroom "
             "room. When set, the system_prompt is replaced by a standard "
-            "template that uses agent_tone and agent_name. This keeps the "
-            "behavior consistent across agents and prevents the LLM-driven "
-            "agent creator from generating overly restrictive prompts."
+            "template that uses agent_tone and agent_name."
         ),
     )
     agent_tone = fields.Char(
@@ -60,27 +62,39 @@ class MukAIAgent(models.Model):
                 agent_name=self.name or "el asistente",
                 tone=self.agent_tone or "español neutro, amigable",
             )
-            # super() includes the KB section from muk_ai_knowledge if any
-            # — to layer it on top of our template, temporarily swap
-            # self.system_prompt for the template, call super, restore.
             original = self.system_prompt
             self.system_prompt = base
             try:
                 result = super()._build_system_prompt(session=session)
             finally:
                 self.system_prompt = original
+
+            # Append customer context from session user_context
+            ctx = {}
+            if session and isinstance(getattr(session, 'user_context', None), dict):
+                ctx = session.user_context
+            customer_name = ctx.get("customer_name") or ""
+            customer_phone = ctx.get("customer_phone") or ""
+            if customer_name or customer_phone:
+                lines = ["", "DATOS DEL CLIENTE EN ESTA CONVERSACIÓN:"]
+                if customer_name:
+                    lines.append(f"Nombre: {customer_name}")
+                if customer_phone:
+                    lines.append(f"Teléfono: {customer_phone}")
+                lines.append("")
+                result += "\n".join(lines)
+
             return result
         return super()._build_system_prompt(session=session)
 
     def _get_essential_tool_names(self):
-        # Customer-facing agents get invoke_skill + read_resource (so the LLM
-        # picks up named skill workflows for KB lookups) plus ask_user as
-        # minimal fallback. Odoo CRUD/search tools are intentionally excluded
-        # — they push GPT into "Odoo developer mode" (calls search_read instead
-        # of using the KB). apply_tool_filter is NOT overridden because hard-
-        # restricting to one tool makes gpt-5.4 hallucinate tool JSON as text.
+        # Customer-facing agents get invoke_skill + read_resource (explicit KB
+        # lookup path, prevents GPT from falling into Odoo-dev-mode search_read
+        # loops) + escalate_to_human (triggers real operator handoff).
+        # apply_tool_filter is NOT overridden — hard-restricting to one tool
+        # makes gpt-5.4 hallucinate tool JSON as plain text.
         if self.is_customer_facing:
-            return ["ask_user", "invoke_skill", "read_resource"]
+            return ["ask_user", "invoke_skill", "read_resource", "escalate_to_human"]
         return super()._get_essential_tool_names()
 
     def _sync_customer_facing_skills(self):
