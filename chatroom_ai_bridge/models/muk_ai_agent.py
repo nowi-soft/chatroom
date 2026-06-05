@@ -73,19 +73,37 @@ class MukAIAgent(models.Model):
         return super()._build_system_prompt(session=session)
 
     def _get_essential_tool_names(self):
-        # Don't eager-advertise Odoo CRUD/search tools to customer-facing
-        # agents — pushes the LLM to "search the database" instead of using
-        # its KB. We keep ask_user as a minimal valid eager tool (gpt-5.4
-        # behaves poorly when no tools are advertised, hallucinates JSON).
+        # Customer-facing agents get invoke_skill + read_resource (so the LLM
+        # picks up named skill workflows for KB lookups) plus ask_user as
+        # minimal fallback. Odoo CRUD/search tools are intentionally excluded
+        # — they push GPT into "Odoo developer mode" (calls search_read instead
+        # of using the KB). apply_tool_filter is NOT overridden because hard-
+        # restricting to one tool makes gpt-5.4 hallucinate tool JSON as text.
         if self.is_customer_facing:
-            return ["ask_user"]
+            return ["ask_user", "invoke_skill", "read_resource"]
         return super()._get_essential_tool_names()
 
-    # NOTE — apply_tool_filter is intentionally NOT overridden for
-    # customer-facing agents. Hard-restricting tools to ['ask_user'] made
-    # gpt-5.4 hallucinate tool-call JSON as plain text. The current
-    # compromise (essentials restricted, tool_filter unrestricted) lets
-    # the model see ask_user eagerly but lazy-loads others. The deeper
-    # fix (force the LLM out of "Odoo developer mode") needs a model swap
-    # (claude-sonnet/gemini) or a custom customer-facing runtime that
-    # bypasses muk_ai. Tracked as open question for next iteration.
+    def _sync_customer_facing_skills(self):
+        Skill = self.env["muk_ai.skill"].sudo()
+        for agent in self.filtered("is_customer_facing"):
+            for kb in agent.knowledge_ids:
+                content = kb.processed_content or kb.content or ""
+                skill_name = f"kb_{kb.id}"
+                skill = Skill.search([("name", "=", skill_name)], limit=1)
+                vals = {
+                    "label": kb.name,
+                    "description": kb.name,
+                    "body": content,
+                }
+                if skill:
+                    skill.write(vals)
+                    if agent.id not in skill.agent_ids.ids:
+                        skill.write({"agent_ids": [(4, agent.id)]})
+                else:
+                    Skill.create({**vals, "name": skill_name, "agent_ids": [(4, agent.id)]})
+
+    def write(self, vals):
+        result = super().write(vals)
+        if vals.get("is_customer_facing"):
+            self._sync_customer_facing_skills()
+        return result
