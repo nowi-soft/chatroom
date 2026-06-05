@@ -32,6 +32,9 @@ Components:
         "data/agent_creator.xml",
         "views/chatroom_room_views.xml",
     ],
+    "demo": [
+        "demo/fictional_business.xml",
+    ],
     "installable": True,
     "application": False,
     "auto_install": False,

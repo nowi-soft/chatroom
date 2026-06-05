@@ -93,7 +93,7 @@ export class ChatroomApp extends Component {
 
     async loadChats() {
         const rooms = await this.orm.call("chatroom.room", "search_read", [], {
-            domain: [["state", "!=", "closed"], ["is_management_room", "!=", true]],
+            domain: [["state", "!=", "closed"]],
             fields: [
                 "name",
                 "assigned_to_id",
@@ -120,7 +120,7 @@ export class ChatroomApp extends Component {
 
     async loadClosedChats() {
         const rooms = await this.orm.call("chatroom.room", "search_read", [], {
-            domain: [["state", "=", "closed"], ["is_management_room", "!=", true]],
+            domain: [["state", "=", "closed"]],
             fields: [
                 "name",
                 "assigned_to_id",
