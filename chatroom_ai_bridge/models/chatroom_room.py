@@ -4,7 +4,7 @@ from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
-_TERMINAL_STATES = {"stopped", "error", "done"}
+_TERMINAL_STATES = {"stopped", "error"}
 
 
 class ChatroomRoom(models.Model):
