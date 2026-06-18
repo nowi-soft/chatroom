@@ -25,6 +25,11 @@ TXT, MD, CSV.
         "views/ai_agent_views.xml",
         "views/menu.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "muk_ai_knowledge/static/src/chat_composer_patch.js",
+        ],
+    },
     "external_dependencies": {
         "python": ["PyPDF2", "docx", "pandas", "openpyxl"],
     },

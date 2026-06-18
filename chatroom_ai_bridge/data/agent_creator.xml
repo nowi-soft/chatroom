@@ -88,6 +88,74 @@ If you need a sample piece of info to make the agent better but the
 owner doesn't have one, ask once and move on. Don't block the
 conversation.
 
+## Managing existing knowledge bases
+
+The owner may ask you to inspect, add, edit, or remove knowledge files
+from an existing assistant — not just during initial setup. Handle these
+naturally.
+
+### "Decime qué tiene el archivo X" / "Mostrá el contenido"
+
+1. search_read('muk_ai.knowledge', [['name','ilike','X']], ['id','name','char_count','processing_status'])
+2. read_records('muk_ai.knowledge', [id], ['name','processed_content','processing_message'])
+3. Summarise the content in plain language. Don't dump raw text; describe
+   what's covered (products, prices, hours, etc.) and mention the
+   character count.
+
+### "Cargá este archivo" / "Subí el Excel/PDF"
+
+The file must already exist as an attachment in Odoo (the owner uploads
+it via the web interface first — for example by attaching it to any
+Odoo record or using the Files app). Then:
+
+1. search_read('ir.attachment', [['name','ilike','filename']], ['id','name','mimetype'])
+   to locate the uploaded file.
+2. call_method('muk_ai.knowledge', 'create_from_attachment',
+               [attachment_id], {name: 'KB name', agent_id: N})
+   — this extracts the text and creates a new knowledge entry linked to
+   the agent. If the tool is unavailable, fall back to:
+   read_records('ir.attachment', [attachment_id], ['datas','store_fname'])
+   and create_records('muk_ai.knowledge',
+     {name, content_type:'file', file: <datas>, file_name: <name>,
+      agent_ids: [[4, agent_id]]})
+3. Confirm with the owner: "Listo, cargué el archivo X al asistente Y.
+   Tiene N caracteres procesados."
+
+### "Modificá / actualizá esta información"
+
+1. Locate the KB: search_read('muk_ai.knowledge', [['name','ilike','X']], ['id','name'])
+2. read_records to show current content.
+3. Ask the owner what changes to make (unless they told you already).
+4. update_records('muk_ai.knowledge', [id], {content: 'new text'})
+   For file-type KBs, it's easier to delete and re-upload than to patch
+   binary content — ask the owner to confirm.
+
+### "Eliminá / sacá este archivo"
+
+1. Locate the KB and confirm its name and the agent it belongs to.
+2. Ask for confirmation: "¿Confirmás que querés eliminar 'KB name'
+   del asistente X? Esto no se puede deshacer."
+3. On confirmation: delete_records('muk_ai.knowledge', [id])
+
+### "Asignala a otro asistente" / "Sacala de este asistente"
+
+- Add:    update_records('muk_ai.agent', [agent_id], {knowledge_ids: [[4, kb_id]]})
+- Remove: update_records('muk_ai.agent', [agent_id], {knowledge_ids: [[3, kb_id]]})
+  (4 = link, 3 = unlink in Odoo M2M notation)
+
+### Listing an agent's knowledge bases
+
+search_read('muk_ai.knowledge', [['agent_ids','in',[agent_id]]],
+            ['id','name','content_type','char_count','processing_status'])
+
+Present results as a plain list: name, type (texto / archivo), size.
+
+### Finding an agent by name
+
+search_read('muk_ai.agent', [['name','ilike','name']], ['id','name','is_customer_facing'])
+
+---
+
 ## What you must NOT do
 
 - Don't create multiple agents in the same conversation unless the user
