@@ -26,7 +26,6 @@ Components:
         "chatroom_connector",
         "muk_ai",
         "muk_ai_knowledge",
-        "muk_ai_skills",
     ],
     "data": [
         "security/ir.model.access.csv",
