@@ -1,11 +1,40 @@
 import logging
+import threading
 from datetime import timedelta
 
+import odoo
 from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
 _TERMINAL_STATES = {"stopped", "error"}
+
+# Per-(db, room) debounce timers. Odoo's ir.cron only has ~1 minute precision
+# (a future-dated _trigger does not wake the cron worker, which sleeps in 60s
+# blocks), so we use real threading.Timer wake-ups for sub-minute delays. The
+# room's ai_dispatch_due (in DB) is the source of truth: a timer only dispatches
+# if the due time has actually elapsed, so a reset from another worker process
+# (which we cannot cancel) is handled correctly, and the ir.cron acts as a
+# safety net if a timer is lost (e.g. worker recycled before it fires).
+_AI_DISPATCH_TIMERS = {}
+_AI_DISPATCH_LOCK = threading.Lock()
+
+
+def _ai_timer_fire(db_name, room_id):
+    """threading.Timer callback: open a fresh cursor and dispatch if due."""
+    try:
+        registry = odoo.registry(db_name)
+        with registry.cursor() as cr:
+            env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
+            room = env["chatroom.room"].browse(room_id)
+            if room.exists():
+                room._dispatch_due_now()
+            cr.commit()
+    except Exception:
+        _logger.exception("AI debounce timer failed for room %s", room_id)
+    finally:
+        with _AI_DISPATCH_LOCK:
+            _AI_DISPATCH_TIMERS.pop((db_name, room_id), None)
 
 
 class ChatroomRoom(models.Model):
@@ -137,7 +166,31 @@ class ChatroomRoom(models.Model):
         self.ensure_one()
         due = fields.Datetime.now() + timedelta(seconds=delay)
         self.sudo().ai_dispatch_due = due
+        db_name = self.env.cr.dbname
+        key = (db_name, self.id)
+        timer = threading.Timer(delay, _ai_timer_fire, args=(db_name, self.id))
+        timer.daemon = True
+        with _AI_DISPATCH_LOCK:
+            existing = _AI_DISPATCH_TIMERS.pop(key, None)
+            if existing:
+                existing.cancel()
+            _AI_DISPATCH_TIMERS[key] = timer
+        # Start only after this transaction commits, so the timer reads the
+        # persisted ai_dispatch_due and the new incoming message.
+        self.env.cr.postcommit.add(timer.start)
+        # Safety net: the ir.cron (runs every minute) catches a lost timer.
         self.env.ref("chatroom_ai_bridge.cron_dispatch_due_ai").sudo()._trigger(at=due)
+
+    def _dispatch_due_now(self):
+        """Dispatch only if the debounce window has actually elapsed. A newer
+        message may have pushed ai_dispatch_due into the future (possibly from
+        another worker process whose timer we cannot cancel); in that case a
+        later wake-up handles it."""
+        self.ensure_one()
+        due = self.ai_dispatch_due
+        if not due or due > fields.Datetime.now():
+            return
+        self._dispatch_pending_to_ai()
 
     def _dispatch_pending_to_ai(self):
         """Send all not-yet-dispatched incoming messages of this room as a
