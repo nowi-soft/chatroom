@@ -156,11 +156,16 @@ class ChatroomConnector(models.Model):
             if "@" not in phone_number:
                 phone_number = f"{phone_number}@s.whatsapp.net"
 
-            if not media_url and attachment:
-                base_web_url = (
-                    self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+            # Evolution's `media`/`audio` field accepts a public URL or a raw
+            # base64 string. The message's frontend file_url is a relative path
+            # (/chatroom/file/..) or a `data:` URI, neither of which Evolution
+            # can fetch, so for outgoing attachments we send the raw base64.
+            if not media_url and attachment and attachment.datas:
+                media_url = (
+                    attachment.datas.decode()
+                    if isinstance(attachment.datas, bytes)
+                    else attachment.datas
                 )
-                media_url = f"{base_web_url}/web/content/{attachment.id}?download=true"
 
             if message_type == "text":
                 url = f"{base_url}/message/sendText/{self.app_name}"
@@ -173,6 +178,8 @@ class ChatroomConnector(models.Model):
                     "media": media_url,
                     "caption": message_text or "",
                 }
+                if mime_type:
+                    data["mimetype"] = mime_type
             elif message_type == "file":
                 url = f"{base_url}/message/sendMedia/{self.app_name}"
                 data = {
@@ -180,13 +187,13 @@ class ChatroomConnector(models.Model):
                     "mediatype": "document",
                     "media": media_url,
                     "fileName": filename or message_text or "document",
+                    "mimetype": mime_type or "application/octet-stream",
                 }
             elif message_type == "audio":
-                url = f"{base_url}/message/sendMedia/{self.app_name}"
+                url = f"{base_url}/message/sendWhatsAppAudio/{self.app_name}"
                 data = {
                     "number": phone_number,
-                    "mediatype": "audio",
-                    "media": media_url,
+                    "audio": media_url,
                 }
             elif message_type == "video":
                 url = f"{base_url}/message/sendMedia/{self.app_name}"
@@ -196,6 +203,8 @@ class ChatroomConnector(models.Model):
                     "media": media_url,
                     "caption": message_text or "",
                 }
+                if mime_type:
+                    data["mimetype"] = mime_type
             else:
                 url = f"{base_url}/message/sendText/{self.app_name}"
                 data = {"number": phone_number, "text": message_text}

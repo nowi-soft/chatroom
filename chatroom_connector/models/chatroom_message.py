@@ -45,7 +45,7 @@ class ChatroomMessage(models.Model):
                 phone_number=phone_number,
                 message_text=message_text,
                 message_type=message.message_type or "text",
-                media_url=message.file_url or message.media_url,
+                media_url=message.media_url,
                 filename=message.filename,
                 mime_type=message.mime_type,
                 attachment=message.attachment_id,
