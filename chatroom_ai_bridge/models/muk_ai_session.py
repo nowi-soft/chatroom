@@ -8,6 +8,18 @@ _logger = logging.getLogger(__name__)
 class MukAISession(models.Model):
     _inherit = "muk_ai.session"
 
+    def _effective_system_prompt(self):
+        """Customer-facing agents build their prompt dynamically (template +
+        knowledge base + customer context) via agent._build_system_prompt;
+        their stored system_prompt field is intentionally empty. The base
+        session only reads that empty field and falls back to the default
+        agent's prompt, so route customer-facing agents through the agent
+        builder instead."""
+        agent = self.agent_id
+        if agent and agent.is_customer_facing:
+            return agent._build_system_prompt(session=self)
+        return super()._effective_system_prompt()
+
     def _append_event(self, entry):
         """When an assistant text event fires on a session tied to a chatroom.room,
         materialize an outgoing chatroom.message so the connector can deliver it."""
