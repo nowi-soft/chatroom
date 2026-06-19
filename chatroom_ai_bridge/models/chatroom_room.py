@@ -29,7 +29,9 @@ def _ai_timer_fire(db_name, room_id):
             room = env["chatroom.room"].browse(room_id)
             if room.exists():
                 room._dispatch_due_now()
-            cr.commit()
+            # Standalone cursor in a background thread (not the request txn),
+            # so an explicit commit is correct here.
+            cr.commit()  # pylint: disable=invalid-commit
     except Exception:
         _logger.exception("AI debounce timer failed for room %s", room_id)
     finally:
@@ -113,16 +115,18 @@ class ChatroomRoom(models.Model):
             self.env["muk_ai.session"]
             .with_user(bot)
             .sudo()
-            .create({
-                "name": f"Chatroom #{self.id} — {self.name or ''}".strip(" —"),
-                "agent_id": self.muk_ai_agent_id.id,
-                "override_approval_mode": "off",
-                "user_context": {
-                    "chatroom_room_id": self.id,
-                    "customer_name": partner.name or self.name or "",
-                    "customer_phone": partner.phone or "",
-                },
-            })
+            .create(
+                {
+                    "name": f"Chatroom #{self.id} — {self.name or ''}".strip(" —"),
+                    "agent_id": self.muk_ai_agent_id.id,
+                    "override_approval_mode": "off",
+                    "user_context": {
+                        "chatroom_room_id": self.id,
+                        "customer_name": partner.name or self.name or "",
+                        "customer_phone": partner.phone or "",
+                    },
+                }
+            )
         )
         self.sudo().muk_ai_session_id = new_session.id
         return new_session
@@ -136,8 +140,10 @@ class ChatroomRoom(models.Model):
     # ------------------------------------------------------------------
     def _ai_response_delay(self):
         """Configured debounce delay in seconds (0 = reply immediately)."""
-        param = self.env["ir.config_parameter"].sudo().get_param(
-            "chatroom_ai_bridge.ai_response_delay", "0"
+        param = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("chatroom_ai_bridge.ai_response_delay", "0")
         )
         try:
             return max(0, int(float(param)))

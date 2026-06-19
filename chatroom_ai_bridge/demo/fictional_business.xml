@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <!--
   Demo data: "Distribuidora La Norteña"
   Empresa ficticia de fiambres y quesos al por mayor, para tests del agente creador
@@ -12,13 +12,12 @@
     - 8 chatroom.message de ejemplo (preguntas típicas de un mayorista)
 -->
 <odoo noupdate="1">
-
     <!-- ============================================================
          AGENT: Asistente La Norteña
          ============================================================ -->
     <record id="agent_la_nortena" model="muk_ai.agent">
         <field name="name">Asistente La Norteña</field>
-        <field name="is_customer_facing" eval="True"/>
+        <field name="is_customer_facing" eval="True" />
         <field name="agent_tone">español rioplatense, amigable, de vos</field>
         <field name="kb_mode">inline</field>
         <field name="approval_mode">off</field>
@@ -32,7 +31,9 @@
     <record id="kb_horarios" model="muk_ai.knowledge">
         <field name="name">Horarios de atención y contacto</field>
         <field name="content_type">text</field>
-        <field name="content"><![CDATA[
+        <field
+            name="content"
+        ><![CDATA[
 DISTRIBUIDORA LA NORTEÑA — INFORMACIÓN DE CONTACTO Y HORARIOS
 
 Dirección: Av. Circunvalación 1420, Córdoba capital, Argentina
@@ -53,13 +54,15 @@ responde por WhatsApp dentro de 2 horas en días hábiles.
 
 Nota: los pedidos mayoristas requieren 24 hs de anticipación mínima.
         ]]></field>
-        <field name="agent_ids" eval="[(4, ref('agent_la_nortena'))]"/>
+        <field name="agent_ids" eval="[(4, ref('agent_la_nortena'))]" />
     </record>
 
     <record id="kb_catalogo" model="muk_ai.knowledge">
         <field name="name">Catálogo de productos y precios mayoristas</field>
         <field name="content_type">text</field>
-        <field name="content"><![CDATA[
+        <field
+            name="content"
+        ><![CDATA[
 DISTRIBUIDORA LA NORTEÑA — CATÁLOGO MAYORISTAS (válido al 01/06/2026)
 
 FIAMBRES (precio por kg, sin IVA, a partir de 3 kg por producto):
@@ -104,13 +107,15 @@ PEDIDO MÍNIMO: $45.000 (sin IVA) por despacho.
 Los precios no incluyen IVA (21%). Se emite factura A o B según situación fiscal del cliente.
 Precios sujetos a actualización mensual. Consultar antes de hacer el pedido.
         ]]></field>
-        <field name="agent_ids" eval="[(4, ref('agent_la_nortena'))]"/>
+        <field name="agent_ids" eval="[(4, ref('agent_la_nortena'))]" />
     </record>
 
     <record id="kb_entrega" model="muk_ai.knowledge">
         <field name="name">Zonas de entrega y condiciones de venta</field>
         <field name="content_type">text</field>
-        <field name="content"><![CDATA[
+        <field
+            name="content"
+        ><![CDATA[
 DISTRIBUIDORA LA NORTEÑA — ZONAS DE ENTREGA Y CONDICIONES
 
 ENTREGAS EN CÓRDOBA CAPITAL:
@@ -144,7 +149,7 @@ TEMPERATURA Y CONSERVACIÓN:
   - El cliente debe contar con cámara o heladera para recibir el pedido
   - No nos responsabilizamos por corte de cadena de frío en destino
         ]]></field>
-        <field name="agent_ids" eval="[(4, ref('agent_la_nortena'))]"/>
+        <field name="agent_ids" eval="[(4, ref('agent_la_nortena'))]" />
     </record>
 
     <!-- ============================================================
@@ -153,7 +158,9 @@ TEMPERATURA Y CONSERVACIÓN:
     <record id="partner_claudio_pereyra" model="res.partner">
         <field name="name">Claudio Pereyra</field>
         <field name="phone">+5493515551234</field>
-        <field name="comment">Cliente mayorista de prueba — Distribuidora La Norteña demo</field>
+        <field
+            name="comment"
+        >Cliente mayorista de prueba — Distribuidora La Norteña demo</field>
     </record>
 
     <!-- ============================================================
@@ -162,8 +169,8 @@ TEMPERATURA Y CONSERVACIÓN:
     <record id="room_la_nortena_demo" model="chatroom.room">
         <field name="name">Claudio Pereyra — WhatsApp Demo</field>
         <field name="state">assigned</field>
-        <field name="partner_ids" eval="[(4, ref('partner_claudio_pereyra'))]"/>
-        <field name="muk_ai_agent_id" ref="agent_la_nortena"/>
+        <field name="partner_ids" eval="[(4, ref('partner_claudio_pereyra'))]" />
+        <field name="muk_ai_agent_id" ref="agent_la_nortena" />
     </record>
 
     <!-- ============================================================
@@ -171,7 +178,7 @@ TEMPERATURA Y CONSERVACIÓN:
          Preguntas reales de mayoristas de fiambres
          ============================================================ -->
     <record id="msg_01" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
+        <field name="room_id" ref="room_la_nortena_demo" />
         <field name="body">buenas tardes! cuanto sale el jamon crudo por horma?</field>
         <field name="direction">incoming</field>
         <field name="message_type">text</field>
@@ -179,14 +186,16 @@ TEMPERATURA Y CONSERVACIÓN:
     </record>
 
     <record id="msg_02" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
-        <field name="body">Hola Claudio! El jamón crudo horma entera (aprox 7 kg) sale $10.800/kg. El pedido mínimo es de 3 kg por producto. ¿Querés que te cotice varias unidades?</field>
+        <field name="room_id" ref="room_la_nortena_demo" />
+        <field
+            name="body"
+        >Hola Claudio! El jamón crudo horma entera (aprox 7 kg) sale $10.800/kg. El pedido mínimo es de 3 kg por producto. ¿Querés que te cotice varias unidades?</field>
         <field name="direction">outgoing</field>
         <field name="message_type">text</field>
     </record>
 
     <record id="msg_03" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
+        <field name="room_id" ref="room_la_nortena_demo" />
         <field name="body">hacen entregas a mendoza?</field>
         <field name="direction">incoming</field>
         <field name="message_type">text</field>
@@ -194,14 +203,16 @@ TEMPERATURA Y CONSERVACIÓN:
     </record>
 
     <record id="msg_04" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
-        <field name="body">¡Sí! Enviamos a Mendoza por flete a cargo tuyo. El tiempo de entrega son 2 a 4 días hábiles. El pedido mínimo para envíos fuera de Córdoba es $80.000 (sin IVA). ¿Ya tenés armado el pedido?</field>
+        <field name="room_id" ref="room_la_nortena_demo" />
+        <field
+            name="body"
+        >¡Sí! Enviamos a Mendoza por flete a cargo tuyo. El tiempo de entrega son 2 a 4 días hábiles. El pedido mínimo para envíos fuera de Córdoba es $80.000 (sin IVA). ¿Ya tenés armado el pedido?</field>
         <field name="direction">outgoing</field>
         <field name="message_type">text</field>
     </record>
 
     <record id="msg_05" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
+        <field name="room_id" ref="room_la_nortena_demo" />
         <field name="body">tienen queso sardo? cuanto sale el kilo</field>
         <field name="direction">incoming</field>
         <field name="message_type">text</field>
@@ -209,14 +220,16 @@ TEMPERATURA Y CONSERVACIÓN:
     </record>
 
     <record id="msg_06" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
-        <field name="body">El Queso Sardo duro sale $8.600/kg (sin IVA), a partir de 2 kg. ¿Lo sumamos al pedido junto con el jamón crudo?</field>
+        <field name="room_id" ref="room_la_nortena_demo" />
+        <field
+            name="body"
+        >El Queso Sardo duro sale $8.600/kg (sin IVA), a partir de 2 kg. ¿Lo sumamos al pedido junto con el jamón crudo?</field>
         <field name="direction">outgoing</field>
         <field name="message_type">text</field>
     </record>
 
     <record id="msg_07" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
+        <field name="room_id" ref="room_la_nortena_demo" />
         <field name="body">hasta cuando atienden hoy?</field>
         <field name="direction">incoming</field>
         <field name="message_type">text</field>
@@ -224,10 +237,11 @@ TEMPERATURA Y CONSERVACIÓN:
     </record>
 
     <record id="msg_08" model="chatroom.message">
-        <field name="room_id" ref="room_la_nortena_demo"/>
-        <field name="body">Hoy atendemos hasta las 17:00 hs (es lunes a viernes ese horario). Si querés hacer el pedido para que salga esta semana, idealmente confirmalo antes de las 17 para que entre en el reparto del día siguiente. ¿Seguimos con la cotización?</field>
+        <field name="room_id" ref="room_la_nortena_demo" />
+        <field
+            name="body"
+        >Hoy atendemos hasta las 17:00 hs (es lunes a viernes ese horario). Si querés hacer el pedido para que salga esta semana, idealmente confirmalo antes de las 17 para que entre en el reparto del día siguiente. ¿Seguimos con la cotización?</field>
         <field name="direction">outgoing</field>
         <field name="message_type">text</field>
     </record>
-
 </odoo>

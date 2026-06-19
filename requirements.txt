@@ -1,8 +1,6 @@
 # generated from manifests external_dependencies
 PyPDF2
-openai
+docx
 openpyxl
 pandas
-python-docx
 requests
-xlrd

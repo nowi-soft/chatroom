@@ -1,13 +1,14 @@
 import logging
 
-from odoo import _, api, models
+from odoo import api, models
 from odoo.exceptions import UserError
+
 from odoo.addons.muk_mcp.core.tool import mcp_tool
 
 from ..utils.text_extraction import (
+    SUPPORTED_EXTENSIONS,
     extract_text_from_attachment,
     is_supported,
-    SUPPORTED_EXTENSIONS,
 )
 
 _logger = logging.getLogger(__name__)
@@ -44,9 +45,7 @@ class MukAIKnowledgeTools(models.AbstractModel):
                 },
                 "agent_id": {
                     "type": ["integer", "null"],
-                    "description": (
-                        "Optional muk_ai.agent ID to link the new KB to."
-                    ),
+                    "description": ("Optional muk_ai.agent ID to link the new KB to."),
                 },
                 "description": {
                     "type": ["string", "null"],
@@ -67,25 +66,31 @@ class MukAIKnowledgeTools(models.AbstractModel):
     ):
         attachment = self.env["ir.attachment"].sudo().browse(attachment_id)
         if not attachment.exists():
-            raise UserError(_(
-                "Attachment id=%(id)s does not exist.",
-                id=attachment_id,
-            ))
+            raise UserError(
+                self.env._(
+                    "Attachment id=%(id)s does not exist.",
+                    id=attachment_id,
+                )
+            )
         if not is_supported(attachment.name or ""):
-            raise UserError(_(
-                "Attachment '%(name)s' has an unsupported extension. "
-                "Supported: %(exts)s.",
-                name=attachment.name,
-                exts=", ".join(SUPPORTED_EXTENSIONS),
-            ))
+            raise UserError(
+                self.env._(
+                    "Attachment '%(name)s' has an unsupported extension. "
+                    "Supported: %(exts)s.",
+                    name=attachment.name,
+                    exts=", ".join(SUPPORTED_EXTENSIONS),
+                )
+            )
 
         text = extract_text_from_attachment(attachment)
         if not text or text.startswith(("Unsupported file type", "Install", "Error")):
-            raise UserError(_(
-                "Could not extract text from '%(name)s': %(msg)s",
-                name=attachment.name,
-                msg=text or "(empty)",
-            ))
+            raise UserError(
+                self.env._(
+                    "Could not extract text from '%(name)s': %(msg)s",
+                    name=attachment.name,
+                    msg=text or "(empty)",
+                )
+            )
 
         vals = {
             "name": name,

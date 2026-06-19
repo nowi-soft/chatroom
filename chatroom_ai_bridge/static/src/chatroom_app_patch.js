@@ -26,10 +26,9 @@ patch(ChatroomApp.prototype, {
         if (this.state.currentRoom?.id === room.id) {
             this.state.currentRoom.ai_active = newVal;
         }
-        this.notification.add(
-            newVal ? "AI activated" : "AI paused — manual handling",
-            {type: "info"}
-        );
+        this.notification.add(newVal ? "AI activated" : "AI paused — manual handling", {
+            type: "info",
+        });
     },
 
     onRoomUpdated(payload) {

@@ -30,12 +30,14 @@ class MukAISession(models.Model):
             if kind == "text" and content:
                 room = self._resolve_chatroom_room()
                 if room:
-                    self.env["chatroom.message"].sudo().create({
-                        "room_id": room.id,
-                        "body": content,
-                        "direction": "outgoing",
-                        "message_type": "text",
-                    })
+                    self.env["chatroom.message"].sudo().create(
+                        {
+                            "room_id": room.id,
+                            "body": content,
+                            "direction": "outgoing",
+                            "message_type": "text",
+                        }
+                    )
         except Exception as e:
             _logger.exception("Failed to emit outgoing chatroom message: %s", e)
         return result
@@ -49,6 +51,8 @@ class MukAISession(models.Model):
             room = self.env["chatroom.room"].sudo().browse(room_id)
             if room.exists():
                 return room
-        return self.env["chatroom.room"].sudo().search(
-            [("muk_ai_session_id", "=", self.id)], limit=1
+        return (
+            self.env["chatroom.room"]
+            .sudo()
+            .search([("muk_ai_session_id", "=", self.id)], limit=1)
         )

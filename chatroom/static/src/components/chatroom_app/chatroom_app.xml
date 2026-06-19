@@ -13,7 +13,7 @@
                                     <button
                                         class="btn btn-sm btn-link header-btn"
                                         t-on-click="openAiCreator"
-                                        title="Configurar AI"
+                                        title="Configure AI"
                                     >
                                         <i class="fa fa-magic" />
                                     </button>

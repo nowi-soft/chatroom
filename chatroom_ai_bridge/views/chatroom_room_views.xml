@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
     <record id="view_chatroom_room_form_inherit_ai_bridge" model="ir.ui.view">
         <field name="name">chatroom.room.form.inherit.ai.bridge</field>
@@ -8,12 +8,17 @@
             <xpath expr="//group" position="inside">
                 <group string="AI">
                     <field name="muk_ai_agent_id" />
-                    <field name="ai_active"
-                           widget="boolean_toggle"
-                           invisible="not muk_ai_agent_id"
-                           string="AI Responding" />
-                    <field name="muk_ai_session_id" readonly="1"
-                           invisible="not muk_ai_session_id" />
+                    <field
+                        name="ai_active"
+                        widget="boolean_toggle"
+                        invisible="not muk_ai_agent_id"
+                        string="AI Responding"
+                    />
+                    <field
+                        name="muk_ai_session_id"
+                        readonly="1"
+                        invisible="not muk_ai_session_id"
+                    />
                 </group>
             </xpath>
         </field>

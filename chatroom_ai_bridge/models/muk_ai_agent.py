@@ -1,6 +1,5 @@
 from odoo import fields, models
 
-
 CUSTOMER_FACING_TEMPLATE = """\
 Sos {agent_name}, el asistente comercial de este negocio. Hablás en {tone}.
 
@@ -85,7 +84,7 @@ class MukAIAgent(models.Model):
 
             # Append customer context from session user_context
             ctx = {}
-            if session and isinstance(getattr(session, 'user_context', None), dict):
+            if session and isinstance(getattr(session, "user_context", None), dict):
                 ctx = session.user_context
             customer_name = ctx.get("customer_name") or ""
             customer_phone = ctx.get("customer_phone") or ""

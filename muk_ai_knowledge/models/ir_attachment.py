@@ -1,9 +1,11 @@
 from odoo import models
 
-SPREADSHEET_MIMETYPES = frozenset({
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-excel",
-})
+SPREADSHEET_MIMETYPES = frozenset(
+    {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+    }
+)
 
 
 class IrAttachment(models.Model):

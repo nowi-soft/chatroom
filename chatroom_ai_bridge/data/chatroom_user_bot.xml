@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo noupdate="1">
     <record id="partner_chatroom_bot" model="res.partner">
         <field name="name">Chatroom Bot</field>
@@ -6,7 +6,11 @@
         <field name="active">True</field>
     </record>
 
-    <record id="user_chatroom_bot" model="res.users">
+    <record
+        id="user_chatroom_bot"
+        model="res.users"
+        context="{'no_reset_password': True}"
+    >
         <field name="name">Chatroom Bot</field>
         <field name="login">chatroom_bot</field>
         <field name="partner_id" ref="partner_chatroom_bot" />

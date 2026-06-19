@@ -25,6 +25,7 @@ def extract_text(data, filename):
     if name.endswith(".pdf"):
         try:
             import PyPDF2
+
             reader = PyPDF2.PdfReader(io.BytesIO(data))
             return "\n".join((p.extract_text() or "") for p in reader.pages).strip()
         except Exception as e:
@@ -40,6 +41,7 @@ def extract_text(data, filename):
     if name.endswith(".docx"):
         try:
             import docx
+
             doc = docx.Document(io.BytesIO(data))
             return "\n".join(p.text for p in doc.paragraphs)
         except Exception as e:
@@ -49,6 +51,7 @@ def extract_text(data, filename):
     if name.endswith((".xls", ".xlsx")):
         try:
             import pandas as pd
+
             df_dict = pd.read_excel(io.BytesIO(data), sheet_name=None)
             parts = []
             for sheet, df in df_dict.items():

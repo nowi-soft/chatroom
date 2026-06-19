@@ -573,7 +573,7 @@ export class ChatroomApp extends Component {
             this.state.isRecordingAudio = true;
         } catch (error) {
             console.error("Error accessing microphone:", error);
-            this.notification.add("No se pudo acceder al micrófono", {type: "danger"});
+            this.notification.add("Could not access the microphone", {type: "danger"});
         }
     }
 

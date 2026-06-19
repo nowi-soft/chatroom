@@ -2,7 +2,10 @@
     <record id="view_chatroom_connector_form_ai" model="ir.ui.view">
         <field name="name">chatroom.connector.form.ai</field>
         <field name="model">chatroom.connector</field>
-        <field name="inherit_id" ref="chatroom_connector.view_chatroom_connector_form" />
+        <field
+            name="inherit_id"
+            ref="chatroom_connector.view_chatroom_connector_form"
+        />
         <field name="arch" type="xml">
             <xpath expr="//field[@name='connector_type']" position="after">
                 <field name="default_ai_agent_id" />

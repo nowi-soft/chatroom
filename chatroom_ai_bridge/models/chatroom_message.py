@@ -45,7 +45,7 @@ class ChatroomMessage(models.Model):
         name = self._ai_bot_display_name()
         for msg in bot_msgs:
             msg.author_name = name or False
-        super(ChatroomMessage, self - bot_msgs)._compute_author_name()
+        return super(ChatroomMessage, self - bot_msgs)._compute_author_name()
 
     def _get_message_text_with_author(self):
         """For outbound bot messages, append the configurable bot name (only if

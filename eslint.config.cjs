@@ -136,7 +136,7 @@ const config = [{
         "no-unsafe-finally": "error",
         "no-unused-expressions": "error",
         "no-unused-labels": "error",
-        "no-unused-vars": "error",
+        "no-unused-vars": ["error", {argsIgnorePattern: "^_", varsIgnorePattern: "^_"}],
         "no-use-before-define": "error",
         "no-useless-call": "warn",
         "no-useless-computed-key": "warn",

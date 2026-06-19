@@ -1,4 +1,4 @@
-from odoo import _, api, models
+from odoo import api, models
 from odoo.exceptions import UserError
 
 from odoo.addons.muk_mcp.core.tool import mcp_tool
@@ -37,18 +37,24 @@ class ChatroomToolsMixin(models.AbstractModel):
     def _mcp_escalate_to_human(self, reason=""):
         session_id = self.env.context.get("muk_mcp_session_id")
         if not session_id:
-            raise UserError(_(
-                "escalate_to_human can only be called from within an AI session."
-            ))
-        room = self.env["chatroom.room"].sudo().search(
-            [("muk_ai_session_id", "=", session_id)], limit=1
+            raise UserError(
+                self.env._(
+                    "escalate_to_human can only be called from within an AI session."
+                )
+            )
+        room = (
+            self.env["chatroom.room"]
+            .sudo()
+            .search([("muk_ai_session_id", "=", session_id)], limit=1)
         )
         if not room:
-            raise UserError(_("No chatroom room is linked to this session."))
+            raise UserError(self.env._("No chatroom room is linked to this session."))
         room.write({"needs_attention": True, "ai_active": False})
         return {
             "status": "escalated",
             "room": room.name,
             "reason": reason or "",
-            "message": "Operator notified. AI has stopped responding to this conversation.",
+            "message": (
+                "Operator notified. AI has stopped responding to this conversation."
+            ),
         }

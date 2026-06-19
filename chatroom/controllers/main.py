@@ -80,7 +80,9 @@ class ChatroomController(http.Controller):
             "message_id": message.id,
         }
 
-    @http.route("/chatroom/room/<int:room_id>/create_partner", type="jsonrpc", auth="user")
+    @http.route(
+        "/chatroom/room/<int:room_id>/create_partner", type="jsonrpc", auth="user"
+    )
     def create_partner_from_chat(self, room_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():
@@ -113,7 +115,9 @@ class ChatroomController(http.Controller):
             "related_records": room.get_related_records(),
         }
 
-    @http.route("/chatroom/room/<int:room_id>/unlink_record", type="jsonrpc", auth="user")
+    @http.route(
+        "/chatroom/room/<int:room_id>/unlink_record", type="jsonrpc", auth="user"
+    )
     def unlink_record(self, room_id, field_name, record_id, **kw):
         room = request.env["chatroom.room"].browse(room_id)
         if not room.exists():

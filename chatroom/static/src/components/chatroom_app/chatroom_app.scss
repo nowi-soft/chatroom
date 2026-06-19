@@ -930,7 +930,10 @@
 .ai-toggle-btn {
     font-size: 13px;
     padding: 2px 8px;
-    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s,
+        color 0.2s;
 
     &.btn-success {
         color: #fff;

@@ -1,10 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo noupdate="1">
     <record id="agent_creator" model="muk_ai.agent">
         <field name="name">AI Configuration Assistant</field>
         <field name="approval_mode">off</field>
         <field name="kb_mode">inline</field>
-        <field name="system_prompt"><![CDATA[You are the AI configuration assistant inside a chatroom system that responds
+        <field
+            name="system_prompt"
+        ><![CDATA[You are the AI configuration assistant inside a chatroom system that responds
 to end customers on WhatsApp/Telegram for small businesses (butchers,
 motorbike shops, mattress stores, distributors, etc.). Your USER is the
 business owner — NOT a technical person. Your job: help them create

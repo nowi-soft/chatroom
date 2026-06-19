@@ -1,8 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <menuitem id="menu_muk_ai_knowledge"
-              name="Knowledge"
-              parent="muk_ai.menu_ai_config"
-              action="action_muk_ai_knowledge"
-              sequence="40" />
+    <menuitem
+        id="menu_muk_ai_knowledge"
+        name="Knowledge"
+        parent="muk_ai.menu_ai_config"
+        action="action_muk_ai_knowledge"
+        sequence="40"
+    />
 </odoo>
