@@ -117,7 +117,17 @@ class ChatroomCrmAiTools(models.AbstractModel):
         if open_lead:
             stamp = fields.Datetime.to_string(fields.Datetime.now())
             addition = f"\n\n— Actualización ({stamp}):\n{(summary or '').strip()}"
-            open_lead.write({"description": (open_lead.description or "") + addition})
+            vals = {"description": (open_lead.description or "") + addition}
+            # Backfill contact fields that are still empty on the existing lead.
+            if contact_name and not open_lead.contact_name:
+                vals["contact_name"] = contact_name
+            if phone and not open_lead.phone:
+                vals["phone"] = phone
+            if email and not open_lead.email_from:
+                vals["email_from"] = email
+            if expected_revenue and not open_lead.expected_revenue:
+                vals["expected_revenue"] = expected_revenue
+            open_lead.write(vals)
             return {
                 "status": "updated",
                 "lead_id": open_lead.id,

@@ -15,3 +15,12 @@ class ResConfigSettings(models.TransientModel):
             "immediately."
         ),
     )
+    chatroom_ai_bot_name = fields.Char(
+        string="AI Bot Name",
+        config_parameter="chatroom_ai_bridge.bot_display_name",
+        help=(
+            "Name shown as the author of the AI bot's messages (when "
+            "'Show Author Name in Messages' is on). Leave empty to show no "
+            "name for the bot."
+        ),
+    )

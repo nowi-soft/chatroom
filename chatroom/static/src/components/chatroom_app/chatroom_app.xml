@@ -286,6 +286,10 @@
                                         t-att-title="state.currentRoom.ai_active ? 'AI activo — click para pausar' : 'AI pausado — click para activar'"
                                     >
                                         <i class="fa fa-android" />
+                                        <span
+                                            class="ms-1"
+                                            t-esc="state.currentRoom.ai_active ? 'IA activa' : 'IA en pausa'"
+                                        />
                                     </button>
                                     <button
                                         class="btn btn-sm btn-link"
