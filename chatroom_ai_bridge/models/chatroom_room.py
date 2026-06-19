@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from odoo import api, fields, models
 
@@ -28,6 +29,15 @@ class ChatroomRoom(models.Model):
             "Uncheck to stop AI auto-responses and handle this "
             "conversation manually. Automatically turned off when "
             "the AI escalates to a human operator."
+        ),
+    )
+    ai_dispatch_due = fields.Datetime(
+        string="AI Dispatch Due",
+        readonly=True,
+        copy=False,
+        help=(
+            "When set, the AI reply for this room is scheduled for this time "
+            "(debounce). Each new incoming message pushes it forward."
         ),
     )
 
@@ -91,3 +101,83 @@ class ChatroomRoom(models.Model):
     def action_toggle_ai(self):
         for room in self:
             room.ai_active = not room.ai_active
+
+    # ------------------------------------------------------------------
+    # AI dispatch (immediate or debounced)
+    # ------------------------------------------------------------------
+    def _ai_response_delay(self):
+        """Configured debounce delay in seconds (0 = reply immediately)."""
+        param = self.env["ir.config_parameter"].sudo().get_param(
+            "chatroom_ai_bridge.ai_response_delay", "0"
+        )
+        try:
+            return max(0, int(float(param)))
+        except (TypeError, ValueError):
+            return 0
+
+    def _dispatch_to_ai(self, content):
+        """Send a user message to the room's AI session, starting it if new."""
+        self.ensure_one()
+        if not self.muk_ai_agent_id or not self.ai_active:
+            return
+        content = (content or "").strip()
+        if not content:
+            return
+        session = self._ensure_ai_session()
+        bot = self.env.ref("chatroom_ai_bridge.user_chatroom_bot")
+        session_user = session.with_user(bot).sudo()
+        if session.state == "new":
+            session_user.start(content)
+        else:
+            session_user.send_message(content)
+
+    def _schedule_ai_dispatch(self, delay):
+        """(Re)arm the debounce timer: reply `delay` seconds from now unless a
+        newer incoming message pushes it forward again."""
+        self.ensure_one()
+        due = fields.Datetime.now() + timedelta(seconds=delay)
+        self.sudo().ai_dispatch_due = due
+        self.env.ref("chatroom_ai_bridge.cron_dispatch_due_ai").sudo()._trigger(at=due)
+
+    def _dispatch_pending_to_ai(self):
+        """Send all not-yet-dispatched incoming messages of this room as a
+        single combined turn, then let the AI reply once."""
+        self.ensure_one()
+        self.sudo().ai_dispatch_due = False
+        Message = self.env["chatroom.message"].sudo()
+        msgs = Message.search(
+            [
+                ("room_id", "=", self.id),
+                ("direction", "=", "incoming"),
+                ("ai_dispatched", "=", False),
+            ],
+            order="id asc",
+        )
+        if not msgs:
+            return
+        msgs.write({"ai_dispatched": True})
+        if not (self.muk_ai_agent_id and self.ai_active):
+            return
+        combined = "\n".join(m.body for m in msgs if m.body)
+        if combined.strip():
+            self._dispatch_to_ai(combined)
+
+    @api.model
+    def _cron_dispatch_due_ai(self):
+        """Cron entrypoint: dispatch every room whose debounce window elapsed."""
+        now = fields.Datetime.now()
+        rooms = self.search(
+            [
+                ("ai_dispatch_due", "!=", False),
+                ("ai_dispatch_due", "<=", now),
+                ("muk_ai_agent_id", "!=", False),
+                ("ai_active", "=", True),
+            ]
+        )
+        for room in rooms:
+            try:
+                room._dispatch_pending_to_ai()
+            except Exception as e:
+                _logger.exception(
+                    "AI debounced dispatch failed for room %s: %s", room.id, e
+                )
