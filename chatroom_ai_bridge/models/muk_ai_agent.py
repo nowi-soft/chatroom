@@ -102,36 +102,12 @@ class MukAIAgent(models.Model):
         return super()._build_system_prompt(session=session)
 
     def _get_essential_tool_names(self):
-        # Customer-facing agents get invoke_skill + read_resource (explicit KB
-        # lookup path, prevents GPT from falling into Odoo-dev-mode search_read
-        # loops) + escalate_to_human (triggers real operator handoff).
+        # Customer-facing agents answer from the inline knowledge base (see
+        # muk_ai_knowledge kb_mode='inline'), so they don't need invoke_skill /
+        # read_resource — the KB content is already in the system prompt. They
+        # keep ask_user + escalate_to_human (real operator handoff).
         # apply_tool_filter is NOT overridden — hard-restricting to one tool
         # makes gpt-5.4 hallucinate tool JSON as plain text.
         if self.is_customer_facing:
-            return ["ask_user", "invoke_skill", "read_resource", "escalate_to_human"]
+            return ["ask_user", "escalate_to_human"]
         return super()._get_essential_tool_names()
-
-    def _sync_customer_facing_skills(self):
-        Skill = self.env["muk_ai.skill"].sudo()
-        for agent in self.filtered("is_customer_facing"):
-            for kb in agent.knowledge_ids:
-                content = kb.processed_content or kb.content or ""
-                skill_name = f"kb_{kb.id}"
-                skill = Skill.search([("name", "=", skill_name)], limit=1)
-                vals = {
-                    "label": kb.name,
-                    "description": kb.name,
-                    "body": content,
-                }
-                if skill:
-                    skill.write(vals)
-                    if agent.id not in skill.agent_ids.ids:
-                        skill.write({"agent_ids": [(4, agent.id)]})
-                else:
-                    Skill.create({**vals, "name": skill_name, "agent_ids": [(4, agent.id)]})
-
-    def write(self, vals):
-        result = super().write(vals)
-        if vals.get("is_customer_facing"):
-            self._sync_customer_facing_skills()
-        return result

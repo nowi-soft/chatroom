@@ -45,7 +45,6 @@ Components:
             "chatroom_ai_bridge/static/src/**/*.js",
         ],
     },
-    "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
     "auto_install": False,
