@@ -283,12 +283,12 @@
                                         class="btn btn-sm ai-toggle-btn"
                                         t-att-class="state.currentRoom.ai_active ? 'btn-success' : 'btn-outline-secondary'"
                                         t-on-click="() => this.toggleAiActive(state.currentRoom)"
-                                        t-att-title="state.currentRoom.ai_active ? 'AI activo — click para pausar' : 'AI pausado — click para activar'"
+                                        t-att-title="state.currentRoom.ai_active ? 'AI active — click to pause' : 'AI paused — click to activate'"
                                     >
                                         <i class="fa fa-android" />
                                         <span
                                             class="ms-1"
-                                            t-esc="state.currentRoom.ai_active ? 'IA activa' : 'IA en pausa'"
+                                            t-esc="state.currentRoom.ai_active ? 'AI active' : 'AI paused'"
                                         />
                                     </button>
                                     <button
