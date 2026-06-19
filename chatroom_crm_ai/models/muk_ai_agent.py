@@ -32,8 +32,10 @@ class MukAIAgent(models.Model):
         string="Capture as Lead (else Opportunity)",
         default=True,
         help=(
-            "When enabled, leads captured by this agent are created as a CRM "
-            "Lead. When disabled, they are created directly as an Opportunity. "
+            "When enabled, captures are created as a CRM Lead; when disabled, "
+            "as an Opportunity. Only applies if the CRM 'Leads' feature is on "
+            "(CRM > Settings); otherwise captures are always Opportunities, "
+            "since lead-type records are hidden when that feature is off. "
             "Lead capture itself is available to all customer-facing agents."
         ),
     )

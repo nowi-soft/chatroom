@@ -127,7 +127,14 @@ class ChatroomCrmAiTools(models.AbstractModel):
             }
 
         partner = room.partner_ids[:1]
-        lead_type = "lead" if room.muk_ai_agent_id.crm_lead_enabled else "opportunity"
+        # Respect the CRM "Leads" feature: when it is disabled, lead-type
+        # records are hidden from the UI, so always create an Opportunity.
+        # When it is enabled, the agent's crm_lead_enabled toggle decides.
+        leads_enabled = self.env.user.has_group("crm.group_use_lead")
+        if leads_enabled and room.muk_ai_agent_id.crm_lead_enabled:
+            lead_type = "lead"
+        else:
+            lead_type = "opportunity"
         final_name = (
             (title or "").strip()
             or f"Interés vía chat — {contact_name or partner.name or room.name}"
