@@ -23,6 +23,7 @@ Components:
     "license": "LGPL-3",
     "depends": [
         "chatroom",
+        "chatroom_connector",
         "muk_ai",
         "muk_ai_knowledge",
         "muk_ai_skills",
@@ -32,6 +33,7 @@ Components:
         "data/chatroom_user_bot.xml",
         "data/agent_creator.xml",
         "views/chatroom_room_views.xml",
+        "views/chatroom_connector_views.xml",
     ],
     "demo": [
         "demo/fictional_business.xml",

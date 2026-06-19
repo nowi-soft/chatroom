@@ -1,6 +1,6 @@
 import logging
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -30,6 +30,24 @@ class ChatroomRoom(models.Model):
             "the AI escalates to a human operator."
         ),
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Auto-assign the connector's default AI agent to new rooms.
+
+        When a room is created for a connector that has a default_ai_agent_id
+        (e.g. an inbound WhatsApp/Telegram chat), the agent is assigned
+        automatically so the AI starts responding without manual setup.
+        An explicit muk_ai_agent_id in vals (including False) is respected.
+        """
+        Connector = self.env["chatroom.connector"]
+        for vals in vals_list:
+            if "muk_ai_agent_id" in vals or not vals.get("connector_id"):
+                continue
+            connector = Connector.browse(vals["connector_id"])
+            if connector.default_ai_agent_id:
+                vals["muk_ai_agent_id"] = connector.default_ai_agent_id.id
+        return super().create(vals_list)
 
     def _room_updated_payload_extras(self):
         self.ensure_one()
