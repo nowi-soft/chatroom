@@ -91,19 +91,25 @@ export class ChatroomApp extends Component {
         this.busService.unsubscribe("chatroom/room_updated", this.onRoomUpdatedBound);
     }
 
+    _roomListFields() {
+        // Hook: extended by add-ons (e.g. connector_id) so a single field list
+        // is used by every room loader and patches never clobber each other.
+        return [
+            "name",
+            "assigned_to_id",
+            "state",
+            "needs_attention",
+            "message_count",
+            "last_message_date",
+            "last_message_preview",
+            "partner_ids",
+        ];
+    }
+
     async loadChats() {
         const rooms = await this.orm.call("chatroom.room", "search_read", [], {
             domain: [["state", "!=", "closed"]],
-            fields: [
-                "name",
-                "assigned_to_id",
-                "state",
-                "needs_attention",
-                "message_count",
-                "last_message_date",
-                "last_message_preview",
-                "partner_ids",
-            ],
+            fields: this._roomListFields(),
             order: "needs_attention desc, last_message_date desc",
         });
 
@@ -130,19 +136,12 @@ export class ChatroomApp extends Component {
     async loadClosedChats() {
         const rooms = await this.orm.call("chatroom.room", "search_read", [], {
             domain: [["state", "=", "closed"]],
-            fields: [
-                "name",
-                "assigned_to_id",
-                "state",
-                "message_count",
-                "last_message_date",
-                "last_message_preview",
-                "partner_ids",
-            ],
+            fields: this._roomListFields(),
             order: "last_message_date desc",
             limit: 100,
         });
         this.state.closedChats = rooms;
+        await this._loadRoomAiData(rooms);
     }
 
     async loadMessages(roomId) {
