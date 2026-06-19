@@ -52,17 +52,25 @@ class ChatroomConnector(models.Model):
             else:
                 connector.webhook_url = False
 
-    def action_test_connection(self):
-        self.ensure_one()
+    def _notification_action(self, message, kind="success", sticky=False):
+        """Build a display_notification client action (shared by connectors)."""
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "message": "Test connection not implemented for this connector type",
-                "type": "warning",
-                "sticky": False,
+                "message": message,
+                "type": kind,
+                "sticky": sticky,
+                "next": {"type": "ir.actions.act_window_close"},
             },
         }
+
+    def action_test_connection(self):
+        self.ensure_one()
+        return self._notification_action(
+            "Test connection not implemented for this connector type",
+            "warning",
+        )
 
     def send_message(
         self,

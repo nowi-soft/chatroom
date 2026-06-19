@@ -116,6 +116,9 @@ class ChatroomRoom(models.Model):
         return True
 
     def _notify_room_updated(self):
+        chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
+        chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
+        all_chatroom_users = chatroom_users | chatroom_managers
         for room in self:
             payload = {
                 "id": room.id,
@@ -132,10 +135,6 @@ class ChatroomRoom(models.Model):
                 "last_message_preview": room.last_message_preview,
                 **room._room_updated_payload_extras(),
             }
-
-            chatroom_users = self.env.ref("chatroom.group_chatroom_user").user_ids
-            chatroom_managers = self.env.ref("chatroom.group_chatroom_manager").user_ids
-            all_chatroom_users = chatroom_users | chatroom_managers
 
             if room.state in ["assigned", "unassigned"]:
                 users_to_notify = all_chatroom_users

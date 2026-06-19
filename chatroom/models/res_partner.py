@@ -43,16 +43,7 @@ class ResPartner(models.Model):
 
     def action_open_first_chatroom(self):
         self.ensure_one()
+        action = {"type": "ir.actions.client", "tag": "chatroom.app"}
         if self.chatroom_ids:
-            return {
-                "type": "ir.actions.client",
-                "tag": "chatroom.app",
-                "params": {
-                    "room_id": self.chatroom_ids[0].id,
-                },
-            }
-        else:
-            return {
-                "type": "ir.actions.client",
-                "tag": "chatroom.app",
-            }
+            action["params"] = {"room_id": self.chatroom_ids[0].id}
+        return action

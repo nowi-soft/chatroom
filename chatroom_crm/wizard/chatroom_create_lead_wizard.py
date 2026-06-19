@@ -35,7 +35,6 @@ class ChatroomCreateLeadWizard(models.TransientModel):
             "description": self.description,
             "expected_revenue": self.expected_revenue,
             "priority": self.priority,
-            "chatroom_room_id": self.room_id.id,
             "chatroom_room_ids": [(4, self.room_id.id)],
             "user_id": self.room_id.assigned_to_id.id
             if self.room_id.assigned_to_id

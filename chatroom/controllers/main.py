@@ -100,15 +100,9 @@ class ChatroomController(http.Controller):
         if not room.exists():
             return {"error": "Room not found"}
 
-        _LINK_SINGLE_FIELDS = frozenset()
-        _LINK_M2M_FIELDS = frozenset(["partner_ids"])
-
-        if field_name in _LINK_SINGLE_FIELDS:
-            room.write({field_name: record_id})
-        elif field_name in _LINK_M2M_FIELDS:
-            room.write({field_name: [(4, record_id)]})
-        else:
+        if field_name not in frozenset(["partner_ids"]):
             return {"error": f"Field '{field_name}' is not allowed"}
+        room.write({field_name: [(4, record_id)]})
 
         return {
             "success": True,
@@ -123,15 +117,9 @@ class ChatroomController(http.Controller):
         if not room.exists():
             return {"error": "Room not found"}
 
-        _UNLINK_SINGLE_FIELDS = frozenset()
-        _UNLINK_M2M_FIELDS = frozenset(["partner_ids"])
-
-        if field_name in _UNLINK_SINGLE_FIELDS:
-            room.write({field_name: False})
-        elif field_name in _UNLINK_M2M_FIELDS:
-            room.write({field_name: [(3, record_id)]})
-        else:
+        if field_name not in frozenset(["partner_ids"]):
             return {"error": f"Field '{field_name}' is not allowed"}
+        room.write({field_name: [(3, record_id)]})
 
         return {
             "success": True,

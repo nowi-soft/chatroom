@@ -51,62 +51,30 @@ class ChatroomConnector(models.Model):
 
             response = requests.get(url, headers=headers, timeout=10)
 
-            if response.status_code == 200:
-                instances = response.json()
-                instance_found = any(i.get("name") == self.app_name for i in instances)
-
-                if instance_found:
-                    self.state = "active"
-                    self.error_message = False
-                    return {
-                        "type": "ir.actions.client",
-                        "tag": "display_notification",
-                        "params": {
-                            "message": "Connection successful!",
-                            "type": "success",
-                            "sticky": False,
-                            "next": {"type": "ir.actions.act_window_close"},
-                        },
-                    }
-                else:
-                    self.state = "error"
-                    self.error_message = f"Instance {self.app_name} not found"
-                    return {
-                        "type": "ir.actions.client",
-                        "tag": "display_notification",
-                        "params": {
-                            "message": f"Instance {self.app_name} not found",
-                            "type": "danger",
-                            "sticky": True,
-                            "next": {"type": "ir.actions.act_window_close"},
-                        },
-                    }
-            else:
+            if response.status_code != 200:
                 self.state = "error"
                 self.error_message = f"HTTP {response.status_code}: {response.text}"
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "message": f"Connection failed: {response.text}",
-                        "type": "danger",
-                        "sticky": True,
-                        "next": {"type": "ir.actions.act_window_close"},
-                    },
-                }
+                return self._notification_action(
+                    f"Connection failed: {response.text}", "danger", sticky=True
+                )
+
+            instances = response.json()
+            if not any(i.get("name") == self.app_name for i in instances):
+                self.state = "error"
+                self.error_message = f"Instance {self.app_name} not found"
+                return self._notification_action(
+                    f"Instance {self.app_name} not found", "danger", sticky=True
+                )
+
+            self.state = "active"
+            self.error_message = False
+            return self._notification_action("Connection successful!", "success")
         except Exception as e:
             self.state = "error"
             self.error_message = str(e)
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "message": f"Connection error: {str(e)}",
-                    "type": "danger",
-                    "sticky": True,
-                    "next": {"type": "ir.actions.act_window_close"},
-                },
-            }
+            return self._notification_action(
+                f"Connection error: {e}", "danger", sticky=True
+            )
 
     def send_message(
         self,

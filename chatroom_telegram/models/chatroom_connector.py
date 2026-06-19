@@ -43,66 +43,35 @@ class ChatroomConnector(models.Model):
             url = f"https://api.telegram.org/bot{self.api_key}/getMe"
             response = requests.get(url, timeout=10)
 
-            if response.status_code == 200:
-                result = response.json()
-                if result.get("ok"):
-                    bot_info = result.get("result", {})
-                    self.state = "active"
-                    self.error_message = False
-                    return {
-                        "type": "ir.actions.client",
-                        "tag": "display_notification",
-                        "params": {
-                            "message": (
-                                "Connection successful! "
-                                f"Bot: @{bot_info.get('username')}"
-                            ),
-                            "type": "success",
-                            "sticky": False,
-                            "next": {"type": "ir.actions.act_window_close"},
-                        },
-                    }
-                else:
-                    self.state = "error"
-                    self.error_message = result.get("description", "Unknown error")
-                    return {
-                        "type": "ir.actions.client",
-                        "tag": "display_notification",
-                        "params": {
-                            "message": (
-                                f"Connection failed: {result.get('description')}"
-                            ),
-                            "type": "danger",
-                            "sticky": True,
-                            "next": {"type": "ir.actions.act_window_close"},
-                        },
-                    }
-            else:
+            if response.status_code != 200:
                 self.state = "error"
                 self.error_message = f"HTTP {response.status_code}: {response.text}"
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "message": (f"Connection failed: {response.text}"),
-                        "type": "danger",
-                        "sticky": True,
-                        "next": {"type": "ir.actions.act_window_close"},
-                    },
-                }
+                return self._notification_action(
+                    f"Connection failed: {response.text}", "danger", sticky=True
+                )
+
+            result = response.json()
+            if not result.get("ok"):
+                self.state = "error"
+                self.error_message = result.get("description", "Unknown error")
+                return self._notification_action(
+                    f"Connection failed: {result.get('description')}",
+                    "danger",
+                    sticky=True,
+                )
+
+            bot_info = result.get("result", {})
+            self.state = "active"
+            self.error_message = False
+            return self._notification_action(
+                f"Connection successful! Bot: @{bot_info.get('username')}", "success"
+            )
         except Exception as e:
             self.state = "error"
             self.error_message = str(e)
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "message": (f"Connection error: {str(e)}"),
-                    "type": "danger",
-                    "sticky": True,
-                    "next": {"type": "ir.actions.act_window_close"},
-                },
-            }
+            return self._notification_action(
+                f"Connection error: {e}", "danger", sticky=True
+            )
 
     def send_message(
         self,

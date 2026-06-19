@@ -80,7 +80,7 @@ class ChatroomMessage(models.Model):
     def _compute_file_url(self):
         for msg in self:
             if msg.attachment_id and msg.attachment_id.datas:
-                if msg.message_type in ["file"]:
+                if msg.message_type == "file":
                     msg.file_url = f"/chatroom/file/{msg.attachment_id.id}"
                 else:
                     mime_type = msg.mime_type or "application/octet-stream"
